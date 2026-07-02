@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, serif; background: #f5f5f0; color: #1a1a1a; }
+
+  /* HEADER */
+  #site-header { background: #fff; border-bottom: 1px solid #ddd; padding: 12px 32px; }
+  #site-header img { height: 52px; display: block; }
+
+  /* COVER */
+  #cover { max-width: 560px; margin: 60px auto; padding: 40px; background: #fff; border: 1px solid #ddd; }
+  h1 { font-size: 1.4em; font-weight: bold; margin-bottom: 6px; }
+  .subtitle { color: #555; font-size: 0.95em; margin-bottom: 32px; }
+  label { display: block; font-size: 0.9em; color: #333; margin-bottom: 4px; margin-top: 16px; }
+  input[type=text] { width: 100%; padding: 8px 10px; border: 1px solid #bbb; font-size: 1em; font-family: inherit; }
+  .btn { display: inline-block; margin-top: 24px; padding: 10px 28px; background: #1a1a1a; color: #fff; border: none; font-size: 1em; font-family: inherit; cursor: pointer; }
+  .btn:hover { background: #333; }
+  .btn:disabled { background: #999; cursor: not-allowed; }
+  .btn-outline { background: #fff; color: #1a1a1a; border: 1px solid #1a1a1a; }
+  .btn-outline:hover { background: #f5f5f0; }
+  #cover-error { color: #b00; font-size: 0.88em; margin-top: 10px; min-height: 1.2em; }
+
+  /* QUIZ LAYOUT */
+  #quiz-wrapper { display: none; max-width: 1100px; margin: 30px auto; padding: 0 16px; gap: 24px; display: none; align-items: flex-start; }
+  #quiz-wrapper.active { display: flex; }
+
+  /* SIDEBAR */
+  #sidebar { width: 210px; flex-shrink: 0; background: #fff; border: 1px solid #ddd; padding: 20px 16px; position: sticky; top: 24px; }
+  #sidebar h2 { font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; color: #777; margin-bottom: 12px; }
+  #student-info { font-size: 0.88em; line-height: 1.6; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #eee; }
+  #student-info strong { display: block; }
+  .q-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .q-dot { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.78em; font-weight: bold; border: 2px solid #ddd; cursor: pointer; transition: all 0.15s; color: #555; background: #fff; }
+  .q-dot:hover { background: #f0f0e8; }
+  .q-dot.answered { background: #c8e6c9; border-color: #81c784; color: #1b5e20; }
+  .q-dot.current { border-color: #1a1a1a; border-width: 2px; background: #e8e8e0; }
+  .q-dot.answered.current { border-color: #1a1a1a; }
+  #save-status { font-size: 0.75em; color: #888; margin-top: 14px; min-height: 1em; }
+
+  /* MAIN QUIZ AREA */
+  #quiz-main { flex: 1; background: #fff; border: 1px solid #ddd; padding: 36px 40px; }
+  #progress-label { font-size: 0.82em; color: #777; margin-bottom: 6px; }
+  #progress-bar-wrap { background: #eee; height: 4px; margin-bottom: 28px; }
+  #progress-bar { background: #1a1a1a; height: 4px; transition: width 0.3s; }
+  .q-number { font-size: 0.82em; color: #777; margin-bottom: 6px; }
+  .q-points { font-size: 0.82em; color: #777; margin-left: 8px; }
+  .q-text { font-size: 1.05em; line-height: 1.65; margin-bottom: 22px; }
+
+  .option { display: flex; align-items: flex-start; gap: 12px; padding: 10px 14px; border: 1px solid #ddd; margin-bottom: 8px; cursor: pointer; transition: background 0.15s; }
+  .option:hover { background: #f5f5f0; }
+  .option.selected { background: #e8e8e0; border-color: #999; }
+  .option input[type=radio] { margin-top: 3px; flex-shrink: 0; }
+  .option-label { font-size: 0.95em; line-height: 1.5; }
+  .fitb-input { width: 100%; padding: 9px 12px; border: 1px solid #bbb; font-size: 1em; font-family: monospace; margin-top: 4px; }
+  .fitb-hint { font-size: 0.82em; color: #777; margin-top: 6px; }
+
+  /* MATCH */
+  .match-row { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+  .match-term { flex:1; padding:9px 12px; background:#f8f8f8; border:1px solid #ddd; font-size:0.95em; }
+  .match-slot { flex:1; min-height:40px; padding:7px 12px; border:2px dashed #bbb; cursor:pointer;
+                display:flex; align-items:center; font-size:0.95em; transition:background 0.1s; }
+  .match-slot:hover { background:#f5f5f0; }
+  .match-slot.filled { border-style:solid; border-color:#888; background:#f0f0e8; }
+  .match-slot.is-selected { border-color:#1a1a1a; background:#e8e8e0; }
+  .match-empty { color:#bbb; font-style:italic; }
+  .match-bank-label { font-size:0.82em; color:#777; margin:14px 0 6px; }
+  .match-bank { display:flex; flex-wrap:wrap; gap:8px; padding:12px; background:#f8f8f8; border:1px solid #ddd; }
+  .match-bank-item { padding:7px 14px; border:1px solid #bbb; cursor:pointer; background:#fff;
+                     font-size:0.93em; transition:background 0.12s; }
+  .match-bank-item:hover { background:#f5f5f0; }
+  .match-bank-item.selected { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
+
+  /* FREE */
+  .free-textarea { width:100%; min-height:130px; padding:10px 12px; border:1px solid #bbb;
+                   font-family:inherit; font-size:0.95em; resize:vertical; line-height:1.55; margin-top:4px; }
+
+  /* CLOZE */
+  .cloze-text { font-size:1.05em; line-height:2.4; }
+  .cloze-select { font-family:inherit; font-size:0.95em; padding:3px 8px;
+                  border:1px solid #bbb; background:#fff; cursor:pointer; margin:0 4px;
+                  border-radius:0; }
+  .cloze-select:focus { outline:2px solid #1a1a1a; }
+
+  /* MULTI-FITB */
+  .multi-fitb-grid { display:grid; gap:12px; margin-top:6px; }
+  .multi-fitb-box { display:flex; flex-direction:column; gap:4px; }
+  .multi-fitb-label { font-size:0.82em; color:#555; font-weight:bold; }
+  .multi-fitb-input { padding:8px 10px; border:1px solid #bbb; font-family:monospace; font-size:0.95em; }
+  .nav { display: flex; justify-content: space-between; margin-top: 28px; }
+
+
+  /* THANK YOU */
+  #thankyou { display: none; max-width: 780px; margin: 40px auto; padding: 40px; background: #fff; border: 1px solid #ddd; }
+  #send-status { margin-top: 12px; font-size: 0.9em; }
+  table.result { width: 100%; border-collapse: collapse; font-size: 0.88em; margin-top: 16px; }
+  table.result th { text-align: left; padding: 6px 8px; border-bottom: 2px solid #ddd; }
+  table.result td { padding: 6px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+  td.correct { color: #2a7a2a; }
+  td.wrong { color: #b00; }
+
+  /* LOADING */
+  #loading-overlay { position: fixed; inset: 0; background: #f5f5f0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; }
+  #loading-overlay.hidden { display: none; }
+  .spinner { width: 36px; height: 36px; border: 3px solid #ddd; border-top-color: #1a1a1a; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-size:0.9em;color:#777;">Caricamento quiz…</div>
+</div>
+
+<header id="site-header">
+  <img src="logo_unisannio.png" alt="Università degli Studi del Sannio — DST">
+</header>
+
+<!-- COVER -->
+<div id="test-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#b71c1c;color:#fff;text-align:center;padding:6px;font-size:0.85em;font-weight:600;letter-spacing:0.04em;">
+  🧪 AMBIENTE DI TEST — i dati non sono reali
+</div>
+<div id="cover" style="display:none;">
+  <h1 id="cover-title">Quiz</h1>
+  <p class="subtitle" id="cover-subtitle"></p>
+  <p id="cover-date" style="display:none;"></p>
+  <div id="practice-badge" style="display:none;margin-top:12px;padding:8px 14px;background:#fff8e1;border:1px solid #ffe082;font-size:0.88em;color:#7b5e00;">
+    ⚙ Modalità esercitazione — puoi ripetere il quiz tutte le volte che vuoi
+  </div>
+  <div id="exam-fields" style="display:none;">
+    <label for="cognome">Cognome e nome</label>
+    <input type="text" id="cognome" placeholder="Es. Rossi Mario" autocomplete="new-password">
+    <label for="matricola">Matricola</label>
+    <input type="text" id="matricola" placeholder="Es. 123456" autocomplete="new-password">
+    <label for="email">Email istituzionale</label>
+    <input type="text" id="email" placeholder="Es. m.rossi@studenti.unisannio.it" autocomplete="new-password">
+    <div id="track-pwd-section" style="display:none;">
+      <label for="track-pwd">Password d'accesso</label>
+      <input type="password" id="track-pwd" placeholder="Comunicata dal docente" autocomplete="off">
+    </div>
+    <p style="font-size:0.85em;color:#777;margin-top:20px;">Inserisci i tuoi dati e clicca Inizia. La tua sessione viene registrata immediatamente.</p>
+  </div>
+  <div id="cover-error"></div>
+  <div id="cover-status" style="font-size:0.88em;color:#777;margin-top:10px;"></div>
+  <button class="btn" id="btn-start" onclick="initQuiz()" disabled style="display:none;">Inizia il quiz</button>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz-wrapper">
+  <div id="sidebar">
+    <h2>Studente</h2>
+    <div id="student-info"></div>
+    <h2>Domande</h2>
+    <div class="q-grid" id="q-grid"></div>
+    <div id="save-status"></div>
+    <div id="timer-wrap" style="margin-top:20px;text-align:center;">
+      <div style="font-size:0.75em;text-transform:uppercase;letter-spacing:0.05em;color:#777;margin-bottom:4px;">Tempo rimanente</div>
+      <div id="timer" style="font-size:1.6em;font-weight:bold;font-family:monospace;color:#1a1a1a;letter-spacing:2px;">--:--</div>
+    </div>
+    <div id="extra-time-toast" style="display:none;margin-top:8px;padding:6px 10px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:4px;font-size:0.82em;color:#2e7d32;text-align:center;"></div>
+    <button class="btn" style="width:100%;margin-top:20px;background:#b00;" onclick="confirmSubmit()">Consegna</button>
+    <button class="btn btn-outline" style="width:100%;margin-top:8px;font-size:0.85em;" onclick="abandonQuiz()">Abbandona</button>
+    <div id="practice-hint" style="display:none;margin-top:14px;font-size:0.78em;color:#7b5e00;background:#fff8e1;border:1px solid #ffe082;padding:8px 10px;line-height:1.5;">
+      Puoi ricominciare il quiz tutte le volte che vuoi.
+    </div>
+  </div>
+  <div id="quiz-main">
+    <div id="progress-label"></div>
+    <div id="progress-bar-wrap"><div id="progress-bar" style="width:0%"></div></div>
+    <div id="question-container"></div>
+    <div class="nav">
+      <button class="btn" id="btn-prev" onclick="prevQ()" style="background:#888">&#8592; Precedente</button>
+      <button class="btn" id="btn-next" onclick="nextQ()">Avanti &#8594;</button>
+    </div>
+  </div>
+</div>
+
+<!-- THANK YOU -->
+<div id="thankyou">
+  <h1>Quiz completato</h1>
+  <div id="send-status" style="font-size:1em;margin-top:16px;"></div>
+  <div id="send-done" style="display:none;color:#2a7a2a;font-size:1em;margin-top:12px;">✓ Consegna registrata. Puoi chiudere questa pagina.</div>
+  <button id="btn-retry" style="display:none;margin-top:16px;" class="btn" onclick="retryFinalize()">Riprova invio</button>
+  <button id="btn-restart" style="display:none;margin-top:24px;" class="btn btn-outline" onclick="restartQuiz()">↺ Ricomincia il quiz</button>
+</div>
+
+<script>
+const SCRIPT_URL      = "https://script.google.com/macros/s/AKfycbzipS7Z8Jnl4jUOPBBSRUkQd-IcW3lcHSCgaWuzaeSagbYJH6roYB0Njw1e8ZXAhZD3/exec";
+const TEST_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyI5a2ejnWKpKnHlThdzpJYU4CWz2IB9GDrrLdXLVXwG4ezGToFZEVVXfb2_VJHkoyNnw/exec";
+const _isTestMode     = new URLSearchParams(window.location.search).has("test");
+const ACTIVE_URL      = (_isTestMode && TEST_SCRIPT_URL) ? TEST_SCRIPT_URL : SCRIPT_URL;
+if (_isTestMode) document.getElementById("test-banner").style.display = "block";
+
+// ---- ID TRACCIA — letto da URL (?id=...) con fallback hardcoded ----
+const EXAM_ID = new URLSearchParams(window.location.search).get("id") || "vhl-2026-05-28";
+
+// Caricati dinamicamente da getTrack
+let questions    = [];
+let EXAM_DATE    = "";
+let EXAM_DURATION_MIN = 60;
+let EXAM_MODE         = "exam";
+let EXAM_PWD_REQUIRED = false;
+let TOTAL_PTS         = 0;
+
+let current = 0;
+let answers = [];
+let studentNominativo = "";
+let studentMatricola  = "";
+let studentEmail      = "";
+let shuffleMap        = [];
+let SHUFFLE_SEED      = null;   // null = shuffle disabilitato
+let matchSelected     = null; // {qIdx, rightOrigIdx, fromSlot: null|leftIdx}
+let startTime         = null;
+let timerInterval     = null;
+let _durationRefreshInterval = null;
+let extraMinutesIndividualApplied = 0;
+let quizEnded         = false;  // impedisce di applicare extra tempo dopo la consegna
+
+// ---- UTILITÀ ----
+function formatDateIt(dateStr) {
+  if (!dateStr) return "";
+  const mesi = ["gennaio","febbraio","marzo","aprile","maggio","giugno",
+                "luglio","agosto","settembre","ottobre","novembre","dicembre"];
+  const match = String(dateStr).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return String(dateStr);
+  const y = match[1], m = parseInt(match[2], 10) - 1, d = parseInt(match[3], 10);
+  return d + " " + (mesi[m] || match[2]) + " " + y;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function getLSKey() { return "quiz_session_" + EXAM_ID; }
+
+// ---- LOCALSTORAGE ----
+function saveLocal() {
+  localStorage.setItem(getLSKey(), JSON.stringify({
+    nominativo: studentNominativo,
+    matricola:  studentMatricola,
+    email:      studentEmail,
+    answers,
+    current,
+    shuffleMap,
+    shuffleSeed: SHUFFLE_SEED,
+    questions,   // set autoritativo assegnato dal server: necessario per ripresa coerente (tracce random)
+    startTime: startTime ? startTime.toISOString() : null
+  }));
+}
+
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(getLSKey());
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function clearLocal() {
+  localStorage.removeItem(getLSKey());
+}
+
+// ---- HTTP ----
+function callScript(payload) {
+  return fetch(ACTIVE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify(payload)
+  }).then(r => {
+    if (!r.ok) throw new Error("HTTP " + r.status + " " + r.statusText);
+    return r.text().then(text => {
+      try { return JSON.parse(text); }
+      catch(e) {
+        console.error("Risposta non-JSON da Apps Script:", text.slice(0, 500));
+        throw new Error("Risposta non valida dal server (non JSON). Controlla il deployment.");
+      }
+    });
+  });
+}
+
+async function callScriptWithRetry(payload, maxRetries) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      const delay = Math.pow(2, attempt - 1) * 1000;
+      document.getElementById("send-status").textContent =
+        "Nuovo tentativo " + attempt + "/" + maxRetries + "…";
+      await new Promise(r => setTimeout(r, delay));
+    }
+    try {
+      const res = await callScript(payload);
+      if (res && res.status === "ok") return true;
+    } catch(e) { /* riprova */ }
+  }
+  return false;
+}
+
+// ---- CARICA TRACCIA + DOMANDE ----
+async function loadTrack() {
+  try {
+    const res = await callScript({ action: "getTrack", examId: EXAM_ID });
+    if (res.status !== "ok") {
+      showCoverError("⚠ Impossibile caricare il quiz: " + (res.message || "errore sconosciuto"));
+      return false;
+    }
+
+    // Le domande NON arrivano più da getTrack (sicurezza): vengono assegnate dal
+    // server all'avvio (init/resetPractice). Qui usiamo solo i conteggi per la cover.
+    questions = [];
+    answers   = [];
+    TOTAL_PTS = res.total_pts || 0;
+    const N_QUESTIONS = res.n_questions || 0;
+
+    // Metadati traccia
+    const t = res.track;
+    EXAM_DATE         = t.exam_date || "";
+    EXAM_DURATION_MIN = t.duration !== undefined && t.duration !== "" ? parseInt(t.duration) : 60;
+    EXAM_MODE         = t.mode || "exam";
+    EXAM_PWD_REQUIRED = !!(t.password_required) && EXAM_MODE === "exam";
+    const examStatus  = t.status || "closed";
+
+    // Cover
+    const durLabel = EXAM_DURATION_MIN === 0 ? "senza limite di tempo" : EXAM_DURATION_MIN + " minuti";
+    const titleParts = ["Quiz"];
+    if (t.corso) titleParts.push(t.corso);
+    if (EXAM_DATE) titleParts.push(formatDateIt(EXAM_DATE));
+    document.getElementById("cover-title").textContent = titleParts.join(" — ");
+    document.title = titleParts.join(" — ");
+    document.getElementById("cover-subtitle").innerHTML =
+      N_QUESTIONS + " domande &nbsp;|&nbsp; " + TOTAL_PTS + " punti &nbsp;|&nbsp; " + durLabel;
+
+    if (EXAM_MODE === "practice") {
+      document.getElementById("practice-badge").style.display = "block";
+      document.getElementById("exam-fields").style.display = "block";
+      showBtn();
+      return true;
+    }
+
+    // Mostra campo password se richiesta
+    document.getElementById("track-pwd-section").style.display = EXAM_PWD_REQUIRED ? "block" : "none";
+
+    // Exam mode
+    const saved = loadLocal();
+    if (examStatus === "closed" && !saved) {
+      document.getElementById("cover-status").textContent = "⚠ Il quiz non è ancora disponibile.";
+      return true;
+    }
+    document.getElementById("exam-fields").style.display = "block";
+    showBtn();
+    return true;
+
+  } catch(e) {
+    showCoverError("⚠ Errore di connessione. Ricarica la pagina.");
+    return false;
+  }
+}
+
+function showCoverError(msg) {
+  document.getElementById("cover-status").textContent = msg;
+}
+
+function showBtn() {
+  const btn = document.getElementById("btn-start");
+  btn.style.display = "inline-block";
+  btn.disabled = false;
+}
+
+// ---- AVVIO PAGINA ----
+window.addEventListener("load", async function() {
+  const ok = await loadTrack();
+  document.getElementById("loading-overlay").classList.add("hidden");
+  document.getElementById("cover").style.display = "block";
+  if (!ok) return;
+
+  // Ripristino sessione locale
+  const saved = loadLocal();
+  if (!saved) return;
+  const resume = confirm("Trovata una sessione in corso per " + saved.nominativo + " (" + saved.matricola + ").\nVuoi riprendere da dove avevi lasciato?");
+  if (!resume) {
+    clearLocal();
+    document.getElementById("cognome").value   = saved.nominativo || "";
+    document.getElementById("matricola").value = saved.matricola  || "";
+    document.getElementById("email").value     = saved.email      || "";
+    return;
+  }
+
+  studentNominativo = saved.nominativo || "";
+  studentMatricola  = saved.matricola;
+  studentEmail      = saved.email || "";
+  // Ripristina il set di domande autoritativo salvato all'init (coerente con COL_QIDS sul server).
+  // Per tracce random, getTrack al reload darebbe un set diverso da quello assegnato: usa quello salvato.
+  if (Array.isArray(saved.questions) && saved.questions.length) {
+    questions = saved.questions;
+    TOTAL_PTS = questions.reduce((s, q) => s + (q.pts || 0), 0);
+  }
+  answers           = saved.answers || new Array(questions.length).fill(null);
+  current           = saved.current || 0;
+  SHUFFLE_SEED      = saved.shuffleSeed !== undefined ? saved.shuffleSeed : null;
+  shuffleMap        = saved.shuffleMap || null;
+  if (!shuffleMap) buildShuffleMap(SHUFFLE_SEED);
+  startTime = saved.startTime ? new Date(saved.startTime) : new Date();
+
+  document.getElementById("cover").style.display = "none";
+  document.getElementById("quiz-wrapper").classList.add("active");
+  document.getElementById("student-info").innerHTML =
+    "<strong>" + studentNominativo + "</strong><br>" + studentMatricola +
+    "<br><span style='font-size:0.85em;color:#888'>" + studentEmail + "</span>";
+  buildGrid();
+  renderQuestion();
+  startTimer();
+});
+
+// ---- INIT ----
+async function initQuiz() {
+  const btn = document.getElementById("btn-start");
+  btn.disabled = true;
+  document.getElementById("cover-error").textContent = "";
+
+  // Verifica password traccia (solo exam, se richiesta)
+  if (EXAM_PWD_REQUIRED) {
+    const trackPwd = document.getElementById("track-pwd").value.trim();
+    if (!trackPwd) {
+      document.getElementById("cover-error").textContent = "Inserisci la password d'accesso.";
+      btn.disabled = false;
+      return;
+    }
+    btn.textContent = "Verifica password…";
+    try {
+      const pwdRes = await callScript({ action: "verifyTrackPassword", examId: EXAM_ID, password: trackPwd });
+      if (pwdRes.status !== "ok") {
+        document.getElementById("cover-error").textContent = "Password errata.";
+        btn.disabled = false;
+        btn.textContent = "Inizia il quiz";
+        return;
+      }
+    } catch(e) {
+      document.getElementById("cover-error").textContent = "Errore di connessione: " + e.message;
+      btn.disabled = false;
+      btn.textContent = "Inizia il quiz";
+      return;
+    }
+  }
+
+  const nominativo = document.getElementById("cognome").value.trim();
+  const matricola  = document.getElementById("matricola").value.trim();
+  const email      = document.getElementById("email").value.trim();
+  if (!nominativo || !matricola || !email) {
+    document.getElementById("cover-error").textContent = "Inserisci tutti i campi richiesti.";
+    btn.disabled = false;
+    return;
+  }
+  btn.textContent = "Verifica in corso…";
+
+  try {
+    // Il server assegna le domande (non si inviano questionIds: il server li ignora per sicurezza)
+    let authoritative = null;
+    const res = await callScript({ action:"init", nominativo, matricola, email, examId: EXAM_ID });
+    if (res.status === "duplicate") {
+      if (EXAM_MODE === "practice") {
+        const reset = confirm(
+          "Hai già un tentativo registrato con questa matricola.\n" +
+          "I risultati precedenti verranno cancellati.\n\nVuoi procedere?"
+        );
+        if (!reset) {
+          btn.disabled = false;
+          btn.textContent = "Inizia il quiz";
+          return;
+        }
+        const resetRes = await callScript({ action:"resetPractice", examId: EXAM_ID,
+                                            matricola, nominativo, email });
+        if (!resetRes || resetRes.status !== "ok") {
+          document.getElementById("cover-error").textContent = "Errore durante il reset. Riprova.";
+          btn.disabled = false;
+          btn.textContent = "Inizia il quiz";
+          return;
+        }
+        authoritative = resetRes;
+      } else {
+        // Prova ripresa autorizzata dal docente
+        const resumeRes = await callScript({ action: "resume", examId: EXAM_ID, matricola });
+        if (resumeRes && resumeRes.status === "ok") {
+          questions = resumeRes.questions;
+          if (resumeRes.total_pts !== undefined) TOTAL_PTS = resumeRes.total_pts;
+          answers = Array.isArray(resumeRes.answers)
+            ? resumeRes.answers.map(a => (a === undefined ? null : a))
+            : new Array(questions.length).fill(null);
+          if (answers.length < questions.length) answers.length = questions.length;
+          studentNominativo = nominativo;
+          studentMatricola  = matricola;
+          studentEmail      = email;
+          startTime = resumeRes.ts_start_iso ? new Date(resumeRes.ts_start_iso) : new Date();
+          buildShuffleMap(resumeRes.seed);
+          saveLocal();
+          document.getElementById("cover").style.display = "none";
+          document.getElementById("thankyou").style.display = "none";
+          document.getElementById("quiz-wrapper").classList.add("active");
+          document.getElementById("student-info").innerHTML =
+            "<strong>" + nominativo + "</strong><br>" + matricola +
+            "<br><span style='font-size:0.85em;color:#888'>" + email + "</span>";
+          document.getElementById("practice-hint").style.display = "none";
+          buildGrid();
+          renderQuestion();
+          startTimer();
+          extraMinutesIndividualApplied = 0;
+          quizEnded = false;
+          if (_durationRefreshInterval) clearInterval(_durationRefreshInterval);
+          _durationRefreshInterval = setInterval(refreshDuration, 60 * 1000);
+          return;
+        }
+        document.getElementById("cover-error").textContent =
+          resumeRes && resumeRes.message === "Esame già consegnato"
+            ? "Hai già consegnato il quiz con questa matricola."
+            : res.finalized
+              ? "Hai già consegnato il quiz con questa matricola."
+              : "Questa matricola è già registrata per l'esame in corso.";
+        btn.disabled = false;
+        btn.textContent = "Inizia il quiz";
+        return;
+      }
+    } else if (res.status === "ok") {
+      authoritative = res;
+    } else {
+      document.getElementById("cover-error").textContent = res.message || "Errore di avvio. Riprova.";
+      btn.disabled = false;
+      btn.textContent = "Inizia il quiz";
+      return;
+    }
+
+    // SICUREZZA: adotta ESATTAMENTE il set di domande assegnato dal server (quello che verrà valutato)
+    if (authoritative && Array.isArray(authoritative.questions)) {
+      questions = authoritative.questions;
+      if (authoritative.total_pts !== undefined) TOTAL_PTS = authoritative.total_pts;
+    }
+    answers = new Array(questions.length).fill(null);
+
+    studentNominativo = nominativo;
+    studentMatricola  = matricola;
+    studentEmail      = email;
+    startTime = new Date();
+    buildShuffleMap(authoritative.seed);  // null = shuffle off; number = seeded; undefined = legacy Math.random
+    saveLocal();
+    document.getElementById("cover").style.display = "none";
+    document.getElementById("thankyou").style.display = "none";
+    document.getElementById("quiz-wrapper").classList.add("active");
+    const infoExtra = EXAM_MODE === "practice"
+      ? "<br><span style='font-size:0.78em;color:#7b5e00;'>esercitazione</span>" : "";
+    document.getElementById("student-info").innerHTML =
+      "<strong>" + nominativo + "</strong><br>" + matricola +
+      "<br><span style='font-size:0.85em;color:#888'>" + email + "</span>" + infoExtra;
+    document.getElementById("practice-hint").style.display = EXAM_MODE === "practice" ? "block" : "none";
+    buildGrid();
+    renderQuestion();
+    startTimer();
+    extraMinutesIndividualApplied = 0;
+    quizEnded = false;
+    // Aggiornamento periodico durata (cattura extra tempo aggiunto dal docente)
+    if (_durationRefreshInterval) clearInterval(_durationRefreshInterval);
+    if (EXAM_MODE !== "practice") {
+      _durationRefreshInterval = setInterval(refreshDuration, 60 * 1000);
+    }
+  } catch(err) {
+    document.getElementById("cover-error").textContent = "Errore: " + err.message;
+    console.error("initQuiz error:", err);
+    btn.disabled = false;
+    btn.textContent = "Inizia il quiz";
+  }
+}
+
+// ---- TIMER ----
+function startTimer() {
+  if (EXAM_DURATION_MIN === 0) {
+    document.getElementById("timer-wrap").style.display = "none";
+    return;
+  }
+  if (timerInterval) clearInterval(timerInterval);
+  if (_durationRefreshInterval) { clearInterval(_durationRefreshInterval); _durationRefreshInterval = null; }
+  timerInterval = setInterval(updateTimer, 1000);
+  updateTimer();
+}
+
+function updateTimer() {
+  if (!startTime) return;
+  const elapsed   = Math.floor((new Date() - startTime) / 1000);
+  const totalSec  = EXAM_DURATION_MIN * 60;
+  const remaining = totalSec - elapsed;
+
+  if (remaining <= 0) {
+    clearInterval(timerInterval);
+    document.getElementById("timer").textContent = "00:00";
+    document.getElementById("timer").style.color = "#b00";
+    showResults();
+    return;
+  }
+
+  const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
+  const ss = String(remaining % 60).padStart(2, "0");
+  document.getElementById("timer").textContent = mm + ":" + ss;
+
+  const timerEl = document.getElementById("timer");
+  if (remaining <= 3 * 60)       timerEl.style.color = "#b00";
+  else if (remaining <= 10 * 60) timerEl.style.color = "#e67e00";
+  else                            timerEl.style.color = "#1a1a1a";
+}
+
+// ---- SHUFFLE ----
+// PRNG seedato (Mulberry32) — usato quando il server fornisce un seed per riproducibilità
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function fisherYates(arr, rng) {
+  const a = [...arr];
+  const rand = rng || Math.random.bind(Math);
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildShuffleMap(seed) {
+  SHUFFLE_SEED = seed !== undefined ? seed : null;
+  if (seed === null) {
+    // Shuffle disabilitato: ordine originale per tutte le domande
+    shuffleMap = questions.map(() => null);
+    return;
+  }
+  const rng = seed != null ? mulberry32(seed) : null;
+  shuffleMap = questions.map(q => {
+    if (q.type === "mc")    return fisherYates(q.options.map((_, i) => i), rng);
+    if (q.type === "match") return fisherYates(q.right.map((_, i) => i), rng);
+    if (rng) rng(); // consuma un passo RNG per mantenere la sequenza deterministica
+    return null;
+  });
+}
+
+// ---- GRID ----
+function buildGrid() {
+  const grid = document.getElementById("q-grid");
+  grid.innerHTML = "";
+  questions.forEach((q, i) => {
+    const d = document.createElement("div");
+    d.className = "q-dot" + (i === 0 ? " current" : "");
+    d.id = "dot-" + i;
+    d.textContent = q.pos || (i + 1);
+    d.onclick = () => jumpTo(i);
+    grid.appendChild(d);
+  });
+}
+
+function updateGrid() {
+  questions.forEach((q, i) => {
+    const d = document.getElementById("dot-" + i);
+    if (!d) return;
+    d.className = "q-dot" + (answers[i] !== null ? " answered" : "") + (i === current ? " current" : "");
+  });
+}
+
+// ---- NAV ----
+function jumpTo(i)  { saveCurrentAnswer(); current = i; renderQuestion(); }
+function nextQ()    { if (current < questions.length - 1) { saveCurrentAnswer(); current++; renderQuestion(); } }
+function prevQ()    { if (current > 0)                    { saveCurrentAnswer(); current--; renderQuestion(); } }
+
+function saveCurrentAnswer() {
+  const ans = answers[current];
+  if (ans !== null && ans !== undefined) enqueueProgress(current, ans);
+  refreshDuration(); // aggiorna durata dalla traccia in background
+}
+
+// ---- CODA SERIALIZZATA CON DEDUPLICA ----
+// Per ogni domanda viene tenuto solo il valore più recente da salvare.
+// Se arriva un nuovo salvataggio mentre quello precedente è ancora in volo,
+// il valore pendente viene aggiornato — così non si accumula mai una coda lunga.
+// Perdere un salvataggio intermedio è safe: finalize salva tutto alla consegna.
+let _savePending = {};   // { qIndex: value } — in attesa di partire
+let _saveInFlight = false;
+
+function enqueueProgress(qIndex, value) {
+  _savePending[qIndex] = value;   // sovrascrive eventuale valore precedente
+  if (!_saveInFlight) _flushSaveQueue();
+}
+
+async function _flushSaveQueue() {
+  while (Object.keys(_savePending).length > 0) {
+    _saveInFlight = true;
+    const entries = Object.entries(_savePending);
+    _savePending = {};  // svuota: eventuali nuovi arrivi durante il save vanno nel prossimo giro
+    for (const [qi, val] of entries) {
+      await saveProgress(parseInt(qi), val);
+    }
+  }
+  _saveInFlight = false;
+}
+
+// ---- AGGIORNAMENTO DURATA DA SERVER ----
+async function refreshDuration() {
+  if (EXAM_MODE === "practice" || quizEnded) return;
+  try {
+    const res = await callScript({ action: "getTrack", examId: EXAM_ID });
+    if (res.status !== "ok" || !res.track) return;
+    const newDur = res.track.duration !== undefined && res.track.duration !== ""
+      ? parseInt(res.track.duration) : EXAM_DURATION_MIN;
+    if (newDur === EXAM_DURATION_MIN) return; // nessun cambiamento
+    const delta = newDur - EXAM_DURATION_MIN;
+    EXAM_DURATION_MIN = newDur;
+    if (delta > 0) showExtraTimeToast("+" + delta + " minuti aggiunti");
+    // Riavvia il timer con la nuova durata (startTime rimane invariato)
+    if (EXAM_DURATION_MIN === 0) {
+      clearInterval(timerInterval);
+      document.getElementById("timer-wrap").style.display = "none";
+    } else {
+      document.getElementById("timer-wrap").style.display = "";
+      startTimer();
+    }
+  } catch(e) { /* silenzioso */ }
+}
+
+function showExtraTimeToast(msg) {
+  const el = document.getElementById("extra-time-toast");
+  if (!el) return;
+  el.textContent = "⏱ " + msg;
+  el.style.display = "block";
+  clearTimeout(el._hideTimeout);
+  el._hideTimeout = setTimeout(() => { el.style.display = "none"; }, 6000);
+}
+
+// ---- RENDER ----
+function renderQuestion() {
+  const q     = questions[current];
+  const total = questions.length;
+
+  document.getElementById("progress-label").textContent = "Domanda " + (current + 1) + " di " + total;
+  document.getElementById("progress-bar").style.width = (((current + 1) / total) * 100) + "%";
+
+  let html = "<div class='q-number'>Domanda " + (q.pos || current + 1) +
+             " <span class='q-points'>[" + q.pts + " pt]</span></div>";
+
+  // Il testo domanda viene reso come innerHTML (per cloze è incluso nel rendering dei dropdown)
+  if (q.type !== "cloze") html += "<div class='q-text'>" + q.text + "</div>";
+
+  if (q.type === "mc") {
+    const order = (shuffleMap && shuffleMap[current]) ? shuffleMap[current] : q.options.map((_, i) => i);
+    order.forEach(origIdx => {
+      const sel = answers[current] === origIdx ? " selected" : "";
+      html += "<div class='option" + sel + "' onclick='selectOption(" + origIdx + ")'>" +
+              "<input type='radio' name='q'" + (answers[current] === origIdx ? " checked" : "") + " readonly>" +
+              "<span class='option-label'>" + q.options[origIdx] + "</span></div>";
+    });
+  } else if (q.type === "fitb") {
+    const val = answers[current] !== null ? answers[current] : "";
+    const ph  = q.placeholder || "";
+    html += "<input class='fitb-input' type='text' id='fitb-input' value='" + escHtml(String(val)) +
+            "' placeholder='" + escHtml(ph) + "' oninput='saveText(this.value)'>" +
+            "<p class='fitb-hint'>Inserisci i valori separati da virgola, senza spazi</p>";
+  } else if (q.type === "match") {
+    html += renderMatchQuestion(q);
+  } else if (q.type === "free") {
+    const val = answers[current] !== null ? answers[current] : "";
+    html += "<textarea class='free-textarea' oninput='saveText(this.value)' " +
+            "placeholder='" + escHtml(q.placeholder || "Scrivi la tua risposta qui…") + "'>" +
+            escHtml(String(val)) + "</textarea>" +
+            "<p class='fitb-hint'>La risposta verrà registrata; il punteggio sarà assegnato manualmente.</p>";
+  } else if (q.type === "multi-fitb") {
+    html += renderMultiFitbQuestion(q);
+  } else if (q.type === "cloze") {
+    html += renderClozeQuestion(q);
+  }
+
+  document.getElementById("question-container").innerHTML = html;
+  document.getElementById("btn-prev").style.visibility = current === 0 ? "hidden" : "visible";
+  const isLast = current === total - 1;
+  const nextBtn = document.getElementById("btn-next");
+  if (isLast) {
+    nextBtn.textContent = "Consegna ✓";
+    nextBtn.onclick = confirmSubmit;
+    nextBtn.style.background = "#2e7d32";
+    nextBtn.style.visibility = "visible";
+  } else {
+    nextBtn.textContent = "Avanti →";
+    nextBtn.onclick = nextQ;
+    nextBtn.style.background = "";
+    nextBtn.style.visibility = "visible";
+  }
+  updateGrid();
+}
+
+function selectOption(i) { answers[current] = i; saveLocal(); renderQuestion(); }
+function saveText(val)    { answers[current] = val; saveLocal(); }
+
+// ---- MATCH ----
+function renderMatchQuestion(q) {
+  if (!Array.isArray(answers[current])) answers[current] = new Array(q.left.length).fill(null);
+  const ans = answers[current];
+  const sm  = (shuffleMap && shuffleMap[current]) || q.right.map((_, i) => i);
+  const used = new Set(ans.filter(x => x !== null));
+  const bank = sm.filter(i => !used.has(i));
+
+  let html = "";
+  q.left.forEach((term, li) => {
+    const ri  = ans[li];
+    const isSel = matchSelected && matchSelected.fromSlot === li;
+    html += "<div class='match-row'>" +
+      "<div class='match-term'>" + escHtml(term) + "</div>" +
+      "<div class='match-slot" + (ri !== null ? " filled" : "") + (isSel ? " is-selected" : "") +
+      "' onclick='matchClickSlot(" + li + ")'>" +
+      (ri !== null ? escHtml(q.right[ri]) : "<span class='match-empty'>—</span>") +
+      "</div></div>";
+  });
+
+  html += "<div class='match-bank-label'>Elementi disponibili — clicca per selezionare, poi clicca uno slot:</div>";
+  html += "<div class='match-bank'>";
+  if (bank.length === 0) {
+    html += "<span style='color:#aaa;font-size:0.85em;font-style:italic;'>Tutti gli elementi sono stati assegnati</span>";
+  } else {
+    bank.forEach(origIdx => {
+      const isSel = matchSelected && matchSelected.rightOrigIdx === origIdx && matchSelected.fromSlot === null;
+      html += "<div class='match-bank-item" + (isSel ? " selected" : "") +
+              "' onclick='matchClickBank(" + origIdx + ")'>" + escHtml(q.right[origIdx]) + "</div>";
+    });
+  }
+  html += "</div>";
+  return html;
+}
+
+function matchClickBank(rightOrigIdx) {
+  if (matchSelected && matchSelected.rightOrigIdx === rightOrigIdx && matchSelected.fromSlot === null) {
+    matchSelected = null; // deseleziona
+  } else {
+    matchSelected = { qIdx: current, rightOrigIdx, fromSlot: null };
+  }
+  renderQuestion();
+}
+
+function matchClickSlot(leftIdx) {
+  const q = questions[current];
+  if (!Array.isArray(answers[current])) answers[current] = new Array(q.left.length).fill(null);
+  const ans = answers[current];
+
+  if (matchSelected) {
+    const { rightOrigIdx, fromSlot } = matchSelected;
+    const existing = ans[leftIdx]; // cosa c'è già nello slot
+    if (fromSlot !== null) ans[fromSlot] = existing; // swap: rimanda al slot sorgente
+    ans[leftIdx] = rightOrigIdx;
+    matchSelected = null;
+  } else if (ans[leftIdx] !== null) {
+    matchSelected = { qIdx: current, rightOrigIdx: ans[leftIdx], fromSlot: leftIdx };
+    // Non assegnare ancora — aspettiamo il click sul nuovo slot
+    answers[current] = ans; saveLocal(); renderQuestion(); return;
+  }
+
+  answers[current] = ans;
+  saveLocal();
+  enqueueProgress(current, ans);
+  renderQuestion();
+}
+
+// ---- MULTI-FITB ----
+function renderMultiFitbQuestion(q) {
+  if (!q.boxes || q.boxes.length === 0) return "<p style='color:#b00;font-size:0.9em;'>Errore: configurazione caselle mancante (aggiornare il deploy dello script).</p>";
+  if (!Array.isArray(answers[current])) answers[current] = new Array(q.boxes.length).fill("");
+  const ans  = answers[current];
+  const cols = q.cols || 1;
+  const ptsList = q.boxes.map(b => b.pts || 0);
+  let html = "<div class='multi-fitb-grid' style='grid-template-columns:repeat(" + cols + ",1fr);'>";
+  q.boxes.forEach((box, i) => {
+    html += "<div class='multi-fitb-box'>" +
+      (box.label ? "<label class='multi-fitb-label'>" + escHtml(box.label) + "</label>" : "") +
+      "<input class='multi-fitb-input' type='text' " +
+      "value='" + escHtml(String(ans[i] || "")) + "' " +
+      "placeholder='" + escHtml(box.placeholder || "") + "' " +
+      "oninput='saveMultiFitbBox(" + i + ",this.value)'>" +
+      "</div>";
+  });
+  html += "</div>";
+  html += "<p class='fitb-hint'>Punteggio parziale: " + ptsList.join(" + ") + " pt</p>";
+  return html;
+}
+
+function saveMultiFitbBox(idx, val) {
+  const q = questions[current];
+  if (!Array.isArray(answers[current])) answers[current] = new Array(q.boxes.length).fill("");
+  answers[current][idx] = val;
+  saveLocal();
+  enqueueProgress(current, answers[current]);
+}
+
+// ---- SAVE PROGRESS ----
+function setSaveStatus(msg) {
+  document.getElementById("save-status").textContent = msg;
+}
+
+function normalizeAnswer(ans) {
+  if (ans === null || ans === undefined) return "";
+  return String(ans).replace(/\s/g, "").toLowerCase();
+}
+
+// ---- CLOZE ----
+function renderClozeQuestion(q) {
+  if (!q.dropdowns || q.dropdowns.length === 0)
+    return "<p style='color:#b00;font-size:0.9em;'>Errore: dati dropdown mancanti.</p>";
+  if (!Array.isArray(answers[current])) answers[current] = new Array(q.dropdowns.length).fill(null);
+  const ans = answers[current];
+
+  // Sostituisce {{N}} con <select> inline, escaping il testo circostante
+  const parts = q.text.split(/(\{\{\d+\}\})/);
+  let html = '<div class="cloze-text">';
+  parts.forEach(part => {
+    const m = part.match(/^\{\{(\d+)\}\}$/);
+    if (m) {
+      const i = parseInt(m[1]);
+      const dd = q.dropdowns[i];
+      if (!dd) { html += escHtml(part); return; }
+      let opts = '<option value="">— scegli —</option>';
+      dd.options.forEach((opt, j) => {
+        opts += "<option value='" + j + "'" + (ans[i] === j ? " selected" : "") + ">" + escHtml(opt) + "</option>";
+      });
+      html += "<select class='cloze-select' onchange='saveClozeBox(" + i + ",parseInt(this.value))'>" + opts + "</select>";
+    } else {
+      html += escHtml(part);
+    }
+  });
+  html += "</div>";
+  if (q.dropdowns.length > 1) {
+    html += "<p class='fitb-hint'>Seleziona la parola/frase corretta per ogni spazio. Punteggio parziale.</p>";
+  }
+  return html;
+}
+
+function saveClozeBox(idx, val) {
+  const q = questions[current];
+  if (!Array.isArray(answers[current])) answers[current] = new Array(q.dropdowns.length).fill(null);
+  answers[current][idx] = isNaN(val) ? null : val;
+  saveLocal();
+  enqueueProgress(current, answers[current]);
+}
+
+// NB: lo scoring è interamente server-side (Apps Script). Il client non conosce
+// più le risposte corrette durante l'esame, quindi non esistono funzioni di scoring
+// client-side. Le risposte corrette vengono mostrate solo in practice, dopo la
+// consegna, usando i dati restituiti da finalize (correct_answers).
+
+async function saveProgress(qIndex, value) {
+  setSaveStatus("Salvataggio…");
+  try {
+    const q = questions[qIndex];
+    let ans;
+    if (q.type === "mc") {
+      ans = (value !== null && value !== undefined) ? String(value) : "";
+    } else if (q.type === "match" || q.type === "multi-fitb" || q.type === "cloze") {
+      ans = JSON.stringify(value || []);
+    } else {
+      ans = String(value || "");
+    }
+    // Invia solo la risposta grezza — il punteggio viene calcolato server-side in finalize
+    const res = await callScript({ action:"update", examId: EXAM_ID, matricola: studentMatricola,
+                                   qIndex: qIndex + 1, ans });
+    setSaveStatus("✓ Salvato");
+    // Propaga extra tempo individuale (global extra è gestito via refreshDuration)
+    const extraInd = res.extra_minutes_individual || 0;
+    if (!quizEnded && extraInd > extraMinutesIndividualApplied) {
+      const delta = extraInd - extraMinutesIndividualApplied;
+      extraMinutesIndividualApplied = extraInd;
+      EXAM_DURATION_MIN += delta;
+      showExtraTimeToast("+" + delta + " minuti aggiunti");
+      startTimer();
+    }
+  } catch(e) {
+    setSaveStatus("⚠ Salvataggio fallito");
+  }
+}
+
+// ---- CONSEGNA ----
+function confirmSubmit() {
+  const answered = answers.filter((a, i) => {
+    if (a === null) return false;
+    const q = questions[i];
+    if (q.type === "match")      return Array.isArray(a) && !a.includes(null);
+    if (q.type === "multi-fitb") return Array.isArray(a) && a.some(v => v !== "");
+    if (q.type === "cloze")      return Array.isArray(a) && a.some(v => v !== null);
+    if (q.type === "free")       return String(a).trim() !== "";
+    return true;
+  }).length;
+  const total      = questions.length;
+  const unanswered = total - answered;
+  let msg = "Hai risposto a " + answered + " domande su " + total + ".";
+  if (unanswered > 0)
+    msg += "\n\n" + unanswered + (unanswered === 1
+      ? " domanda senza risposta verrà considerata errata."
+      : " domande senza risposta verranno considerate errate.");
+  msg += "\n\nConfermi la consegna?";
+  if (confirm(msg)) showResults();
+}
+
+let lastFinalizePayload = null;
+
+async function showResults() {
+  quizEnded = true;
+  if (timerInterval) clearInterval(timerInterval);
+  if (_durationRefreshInterval) { clearInterval(_durationRefreshInterval); _durationRefreshInterval = null; }
+  document.getElementById("quiz-wrapper").classList.remove("active");
+  document.getElementById("thankyou").style.display = "block";
+
+  // Costruisce le risposte grezze da inviare al server (nessun punteggio client-side)
+  const rawAnswers = questions.map((q, i) => {
+    const value = answers[i];
+    let ans;
+    if (q.type === "match" || q.type === "multi-fitb" || q.type === "cloze") {
+      ans = JSON.stringify(value || []);
+    } else if (q.type === "mc") {
+      ans = (value !== null && value !== undefined) ? String(value) : "";
+    } else {
+      ans = String(value || "");
+    }
+    return { ans };
+  });
+
+  const endTime    = new Date();
+  const elapsed    = startTime ? Math.round((endTime - startTime) / 1000) : null;
+  const elapsedStr = elapsed !== null ? Math.floor(elapsed / 60) + "m " + (elapsed % 60) + "s" : "";
+
+  lastFinalizePayload = {
+    action:     "finalize",
+    matricola:  studentMatricola,
+    nominativo: studentNominativo,
+    email:      studentEmail,
+    examId:     EXAM_ID,
+    answers:    rawAnswers,   // solo risposte grezze — punteggio calcolato server-side
+    tsStart:    startTime ? startTime.toISOString() : "",
+    tsEnd:      endTime.toISOString(),
+    elapsed:    elapsedStr
+  };
+
+  clearLocal();
+  await doFinalize();
+}
+
+// Mostra il riepilogo risultati (practice) usando le risposte corrette ricevute dal server
+function showPracticeResults(serverScore, correctAnswers) {
+  const statusEl = document.getElementById("send-status");
+  const rows = questions.map((q, i) => {
+    const userAns = answers[i];
+    const ca      = correctAnswers ? correctAnswers[i] : null;
+    let userDisplay = "—", correctDisplay = "—", pts = 0, isCorrect = false;
+    const serverPts = ca ? (ca.pts || 0) : 0; // verrà usato dal server, qui solo display
+
+    if (q.type === "mc") {
+      userDisplay = (userAns !== null && userAns !== undefined && q.options) ? (q.options[userAns] || "—") : "—";
+      correctDisplay = (ca && ca.correct !== undefined && q.options) ? (q.options[ca.correct] || "—") : "—";
+    } else if (q.type === "fitb") {
+      userDisplay    = userAns || "—";
+      correctDisplay = ca ? (ca.correct || "—") : "—";
+    } else if (q.type === "match") {
+      userDisplay = Array.isArray(userAns) && q.left
+        ? q.left.map((l, j) => l + " → " + (userAns[j] !== null && ca && ca.right ? (ca.right[userAns[j]] || "—") : "—")).join("; ")
+        : "—";
+      correctDisplay = (ca && ca.right && q.left) ? q.left.map((l, j) => l + " → " + ca.right[j]).join("; ") : "—";
+    } else if (q.type === "free") {
+      userDisplay    = String(userAns || "—");
+      correctDisplay = "(valutazione manuale)";
+    } else if (q.type === "multi-fitb") {
+      userDisplay = Array.isArray(userAns) && q.boxes
+        ? q.boxes.map((b, j) => (b.label ? b.label + ": " : "") + (userAns[j] || "—")).join(", ") : "—";
+      correctDisplay = (ca && ca.boxes)
+        ? ca.boxes.map((b, j) => (b.label ? b.label + ": " : "") + (b.correct || "")).join(", ") : "—";
+    } else if (q.type === "cloze") {
+      userDisplay = Array.isArray(userAns) && q.dropdowns
+        ? q.dropdowns.map((dd, j) => dd.options[userAns[j]] || "—").join(" / ") : "—";
+      correctDisplay = (ca && ca.dropdowns)
+        ? ca.dropdowns.map(dd => dd.options[dd.correct]).join(" / ") : "—";
+    }
+    return { userDisplay, correctDisplay, qText: q.text, qPts: q.pts };
+  });
+
+  const in30Practice = (TOTAL_PTS !== 30 && TOTAL_PTS > 0)
+    ? " <span style='font-size:0.65em;color:#777;font-weight:normal;'>≈ " + (Math.round(serverScore / TOTAL_PTS * 30 * 10) / 10) + " / 30</span>"
+    : "";
+  const nCorrectPractice = correctAnswers ? correctAnswers.filter(ca => ca && ca.type !== "free" && ca.scored_pts !== undefined && ca.scored_pts >= ca.max_pts).length : null;
+  const nScoredPractice  = correctAnswers ? correctAnswers.filter(ca => ca && ca.type !== "free").length : null;
+  const correctLinePractice = (nCorrectPractice !== null)
+    ? "<div style='font-size:0.9em;color:#555;margin-bottom:4px;'>" + nCorrectPractice + " domande corrette su " + nScoredPractice + "</div>"
+    : "";
+
+  statusEl.innerHTML =
+    "<div style='font-size:2em;font-weight:bold;margin-bottom:8px;'>" + serverScore + " / " + TOTAL_PTS + in30Practice + "</div>" +
+    correctLinePractice +
+    "<div style='font-size:0.9em;color:#555;margin-bottom:24px;'>Modalità esercitazione</div>" +
+    "<table style='width:100%;border-collapse:collapse;font-size:0.86em;'>" +
+    "<thead><tr style='background:#1a1a1a;color:#fff;'>" +
+    "<th style='padding:8px;text-align:left;font-weight:normal;'>Dom.</th>" +
+    "<th style='padding:8px;text-align:left;font-weight:normal;'>La tua risposta</th>" +
+    "<th style='padding:8px;text-align:left;font-weight:normal;'>Risposta corretta</th>" +
+    "</tr></thead><tbody>" +
+    rows.map((r, i) => "<tr style='border-bottom:1px solid #eee;'>" +
+      "<td style='padding:8px;color:#777;'>" + (i + 1) + "</td>" +
+      "<td style='padding:8px;'>" + escHtml(r.userDisplay) + "</td>" +
+      "<td style='padding:8px;color:#1a5c1a;'>" + escHtml(r.correctDisplay) + "</td>" +
+      "</tr>").join("") + "</tbody></table>";
+  document.getElementById("send-done").style.display = "none";
+  document.getElementById("btn-retry").style.display = "none";
+  document.getElementById("btn-restart").style.display = "inline-block";
+}
+
+async function doFinalize() {
+  const statusEl = document.getElementById("send-status");
+  const doneEl   = document.getElementById("send-done");
+  const retryBtn = document.getElementById("btn-retry");
+
+  statusEl.textContent = "Salvataggio in corso…";
+  statusEl.style.color = "#555";
+  doneEl.style.display   = "none";
+  retryBtn.style.display = "none";
+
+  let res = null;
+  try {
+    res = await callScript(lastFinalizePayload);
+  } catch(e) { res = null; }
+
+  if (!res || res.status !== "ok") {
+    // Riprova fino a 3 volte
+    for (let attempt = 0; attempt < 3 && (!res || res.status !== "ok"); attempt++) {
+      try { res = await callScript(lastFinalizePayload); } catch(e) { res = null; }
+    }
+  }
+
+  if (res && res.status === "ok") {
+    clearLocal();
+    if (EXAM_MODE === "practice") {
+      // Mostra risultati con risposte corrette ricevute dal server
+      showPracticeResults(res.score, res.correct_answers);
+    } else {
+      // Exam: mostra score confermato dal server
+      const examScore = res.score !== undefined ? res.score : "—";
+      const in30Exam = (TOTAL_PTS !== 30 && TOTAL_PTS > 0 && examScore !== "—")
+        ? " <span style='font-size:0.65em;color:#777;font-weight:normal;'>≈ " + (Math.round(examScore / TOTAL_PTS * 30 * 10) / 10) + " / 30</span>"
+        : "";
+      const correctLineExam = (res.n_correct !== undefined && res.n_scored !== undefined)
+        ? "<div style='font-size:0.9em;color:#555;margin-bottom:4px;'>" + res.n_correct + " domande corrette su " + res.n_scored + "</div>"
+        : "";
+      statusEl.innerHTML = "<div style='font-size:2em;font-weight:bold;margin-bottom:8px;'>" +
+        examScore + " / " + TOTAL_PTS + in30Exam + "</div>" +
+        correctLineExam +
+        "<div style='font-size:0.9em;color:#555;'>Punteggio registrato.</div>";
+      doneEl.style.display = "block";
+    }
+  } else {
+    statusEl.textContent = "⚠ Salvataggio non riuscito. I tuoi dati sono al sicuro in questo browser.";
+    statusEl.style.color = "#b00";
+    retryBtn.style.display = "inline-block";
+  }
+}
+
+async function retryFinalize() { await doFinalize(); }
+
+async function abandonQuiz() {
+  if (!confirm("Sei sicuro di voler abbandonare il quiz?\nLa tua sessione verrà cancellata e dovrai ricominciare dall'inizio.")) return;
+
+  if (timerInterval) clearInterval(timerInterval);
+  if (_durationRefreshInterval) { clearInterval(_durationRefreshInterval); _durationRefreshInterval = null; }
+
+  // Cancella la riga sul server (fire-and-forget)
+  if (studentMatricola) {
+    callScript({ action: "abandon", examId: EXAM_ID, matricola: studentMatricola }).catch(() => {});
+  }
+
+  clearLocal();
+
+  // Salva i dati studente prima di azzerarli, per pre-popolare la cover
+  const prevNominativo = studentNominativo;
+  const prevMatricola  = studentMatricola;
+  const prevEmail      = studentEmail;
+
+  // Reset stato
+  studentMatricola  = "";
+  studentNominativo = "";
+  studentEmail      = "";
+  answers   = new Array(questions.length).fill(null);
+  current   = 0;
+  startTime = null;
+
+  // Torna alla cover
+  document.getElementById("quiz-wrapper").classList.remove("active");
+  document.getElementById("thankyou").style.display = "none";
+  document.getElementById("cover").style.display = "block";
+  document.getElementById("cover-error").textContent = "";
+  document.getElementById("cover-status").textContent = "";
+
+  const btn = document.getElementById("btn-start");
+  btn.disabled = false;
+  btn.textContent = "Inizia il quiz";
+
+  document.getElementById("cognome").value   = prevNominativo;
+  document.getElementById("matricola").value = prevMatricola;
+  document.getElementById("email").value     = prevEmail;
+}
+
+async function restartQuiz() {
+  if (timerInterval) clearInterval(timerInterval);
+  if (_durationRefreshInterval) { clearInterval(_durationRefreshInterval); _durationRefreshInterval = null; }
+  document.getElementById("thankyou").style.display = "none";
+  document.getElementById("btn-restart").style.display = "none";
+
+  if (EXAM_MODE === "practice") {
+    // Reset sul server: è il server a riassegnare le domande (set autoritativo)
+    document.getElementById("loading-overlay").classList.remove("hidden");
+    let resetRes = null;
+    try {
+      resetRes = await callScript({ action: "resetPractice", examId: EXAM_ID,
+                         matricola: studentMatricola, nominativo: studentNominativo, email: studentEmail });
+      if (resetRes && resetRes.status === "ok" && Array.isArray(resetRes.questions)) {
+        questions = resetRes.questions;
+        TOTAL_PTS = resetRes.total_pts !== undefined ? resetRes.total_pts : questions.reduce((s, q) => s + (q.pts || 0), 0);
+      }
+    } catch(e) { /* usa le domande precedenti se la rete non risponde */ }
+    document.getElementById("loading-overlay").classList.add("hidden");
+
+    answers   = new Array(questions.length).fill(null);
+    current   = 0;
+    startTime = new Date();
+    buildShuffleMap(resetRes && resetRes.seed !== undefined ? resetRes.seed : undefined);
+    saveLocal();
+    document.getElementById("quiz-wrapper").classList.add("active");
+    buildGrid();
+    renderQuestion();
+    startTimer();
+    return;
+  }
+
+  initQuiz();
+}
+</script>
+</body>
+</html>

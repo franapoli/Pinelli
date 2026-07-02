@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz — Università del Sannio</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, serif; background: #f5f5f0; color: #1a1a1a; min-height: 100vh; }
+
+  #site-header { background: #fff; border-bottom: 1px solid #ddd; padding: 12px 32px; }
+  #site-header img { height: 52px; display: block; }
+
+  .card {
+    max-width: 480px;
+    margin: 60px auto;
+    padding: 40px;
+    background: #fff;
+    border: 1px solid #ddd;
+  }
+
+  .card-title { font-size: 1.35em; font-weight: bold; margin-bottom: 8px; }
+  .card-lead   { color: #555; font-size: 0.95em; line-height: 1.55; margin-bottom: 32px; }
+
+  .field-label {
+    display: block;
+    font-size: 0.78em;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #777;
+    font-weight: bold;
+    margin-bottom: 6px;
+    margin-top: 22px;
+  }
+
+  select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid #bbb;
+    font-size: 1em;
+    font-family: inherit;
+    background: #fff;
+    color: #1a1a1a;
+  }
+  select:disabled { background: #f5f5f0; color: #aaa; border-color: #ddd; }
+
+  .divider { height: 1px; background: #eee; margin: 28px 0 0; }
+
+  .btn {
+    display: inline-block;
+    margin-top: 28px;
+    padding: 11px 32px;
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    font-size: 1em;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .btn:hover:not(:disabled) { background: #333; }
+  .btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  #msg-error  { color: #b00; font-size: 0.88em; margin-top: 14px; min-height: 1.2em; }
+  #msg-status { color: #888; font-size: 0.88em; margin-top: 14px; }
+  #msg-empty  { color: #888; font-size: 0.88em; margin-top: 18px; display: none; }
+
+  @media (max-width: 540px) {
+    .card { margin: 24px 12px; padding: 28px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header id="site-header">
+  <img src="logo_unisannio.png" alt="Università degli Studi del Sannio">
+</header>
+
+<div class="card">
+  <p class="card-title">Accedi all'esame</p>
+  <p class="card-lead">Seleziona il corso, poi scegli un'esercitazione o un esame tra quelli disponibili.</p>
+
+  <label class="field-label" for="sel-corso">Corso</label>
+  <select id="sel-corso" onchange="onCorsoChange()">
+    <option value="">— seleziona un corso —</option>
+  </select>
+
+  <div class="divider"></div>
+
+  <label class="field-label" for="sel-esercitazioni">Esercitazioni</label>
+  <select id="sel-esercitazioni" disabled onchange="onExamSelect('practice')">
+    <option value="">— seleziona esercitazione —</option>
+  </select>
+
+  <label class="field-label" for="sel-esami">Esami</label>
+  <select id="sel-esami" disabled onchange="onExamSelect('exam')">
+    <option value="">— seleziona esame —</option>
+  </select>
+
+  <div>
+    <button class="btn" id="btn-vai" disabled onclick="goToExam()">Accedi &#8594;</button>
+  </div>
+
+  <div id="msg-error"></div>
+  <div id="msg-status">Caricamento esami in corso&#8230;</div>
+  <div id="msg-empty">Nessun esame disponibile al momento.</div>
+</div>
+
+<script>
+const SCRIPT_URL      = "https://script.google.com/macros/s/AKfycbzQ7PfS9K2K_qjGy7VtUo5XkPqfRxbEQrxBWbPwAbw7fZ_xGTAUJcP2V0SI52ru45ySHA/exec";
+const TEST_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyI5a2ejnWKpKnHlThdzpJYU4CWz2IB9GDrrLdXLVXwG4ezGToFZEVVXfb2_VJHkoyNnw/exec";
+const _isTestMode     = new URLSearchParams(window.location.search).has("test");
+const ACTIVE_URL      = (_isTestMode && TEST_SCRIPT_URL) ? TEST_SCRIPT_URL : SCRIPT_URL;
+
+const MESI = ["gennaio","febbraio","marzo","aprile","maggio","giugno",
+              "luglio","agosto","settembre","ottobre","novembre","dicembre"];
+
+let allExams = [];
+let selectedExamId = null;
+
+function callScript(payload) {
+  return fetch(ACTIVE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify(payload)
+  }).then(r => r.text()).then(t => JSON.parse(t));
+}
+
+function formatDate(iso) {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso || "";
+  return parseInt(m[3]) + " " + MESI[parseInt(m[2]) - 1] + " " + m[1];
+}
+
+function examLabel(e) {
+  const d = formatDate(e.data);
+  const dur = e.durata ? " · " + e.durata + " min" : "";
+  return d ? d + dur : e.exam_id;
+}
+
+async function loadExams() {
+  try {
+    const res = await callScript({ action: "getPublicExams" });
+    document.getElementById("msg-status").textContent = "";
+    if (res.status !== "ok") throw new Error(res.message || "errore server");
+    allExams = res.exams || [];
+    if (allExams.length === 0) {
+      document.getElementById("msg-empty").style.display = "block";
+      return;
+    }
+    populateCorso();
+  } catch(e) {
+    document.getElementById("msg-status").textContent = "";
+    document.getElementById("msg-error").textContent =
+      "Impossibile caricare gli esami. Controlla la connessione e riprova.";
+  }
+}
+
+function populateCorso() {
+  const corsi = [...new Set(allExams.map(e => e.corso).filter(Boolean))].sort();
+  const sel = document.getElementById("sel-corso");
+  corsi.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    sel.appendChild(opt);
+  });
+  if (corsi.length === 1) {
+    sel.value = corsi[0];
+    onCorsoChange();
+  }
+}
+
+function onCorsoChange() {
+  const corso = document.getElementById("sel-corso").value;
+  selectedExamId = null;
+  document.getElementById("btn-vai").disabled = true;
+  document.getElementById("msg-error").textContent = "";
+
+  const selE = document.getElementById("sel-esercitazioni");
+  const selX = document.getElementById("sel-esami");
+
+  selE.innerHTML = '<option value="">— seleziona esercitazione —</option>';
+  selX.innerHTML = '<option value="">— seleziona esame —</option>';
+
+  if (!corso) {
+    selE.disabled = true;
+    selX.disabled = true;
+    return;
+  }
+
+  const filtered = allExams.filter(e => e.corso === corso);
+  const practice = filtered.filter(e => e.modalita === "practice");
+  const exam     = filtered.filter(e => e.modalita === "exam");
+
+  practice.forEach(e => {
+    const opt = document.createElement("option");
+    opt.value = e.exam_id;
+    opt.textContent = examLabel(e);
+    selE.appendChild(opt);
+  });
+
+  exam.forEach(e => {
+    const opt = document.createElement("option");
+    opt.value = e.exam_id;
+    opt.textContent = examLabel(e);
+    selX.appendChild(opt);
+  });
+
+  selE.disabled = practice.length === 0;
+  selX.disabled = exam.length === 0;
+
+  if (practice.length === 0 && exam.length === 0) {
+    document.getElementById("msg-error").textContent =
+      "Nessun esame disponibile per questo corso al momento.";
+  }
+}
+
+function onExamSelect(which) {
+  if (which === "practice") {
+    document.getElementById("sel-esami").value = "";
+    selectedExamId = document.getElementById("sel-esercitazioni").value || null;
+  } else {
+    document.getElementById("sel-esercitazioni").value = "";
+    selectedExamId = document.getElementById("sel-esami").value || null;
+  }
+  document.getElementById("btn-vai").disabled = !selectedExamId;
+}
+
+function goToExam() {
+  if (selectedExamId) {
+    window.location.href = "quiz_v2.html?id=" + encodeURIComponent(selectedExamId) + (_isTestMode ? "&test" : "");
+  }
+}
+
+loadExams();
+</script>
+</body>
+</html>

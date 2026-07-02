@@ -1,0 +1,2384 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pannello Admin — QuizForge v2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, serif; background: #f5f5f0; color: #1a1a1a; }
+  #site-header { background: #fff; border-bottom: 1px solid #ddd; padding: 12px 32px; }
+  #site-header img { height: 52px; display: block; }
+
+  #login-panel { max-width: 420px; margin: 60px auto; padding: 40px; background: #fff; border: 1px solid #ddd; }
+  h1 { font-size: 1.3em; font-weight: bold; margin-bottom: 6px; }
+  .subtitle { color: #555; font-size: 0.9em; margin-bottom: 28px; }
+  label { display: block; font-size: 0.88em; color: #333; margin-bottom: 4px; margin-top: 14px; }
+  input[type=password], input[type=text], input[type=date], input[type=number], select {
+    width: 100%; padding: 8px 10px; border: 1px solid #bbb; font-size: 1em;
+    font-family: inherit; background: #fff;
+  }
+  .btn { display: inline-block; margin-top: 16px; padding: 9px 26px; background: #1a1a1a;
+         color: #fff; border: none; font-size: 0.95em; font-family: inherit; cursor: pointer; }
+  .btn:hover { background: #333; }
+  .btn-sm { padding: 7px 18px; font-size: 0.88em; margin-top: 0; }
+  .btn-green  { background: #2e7d32; } .btn-green:hover  { background: #388e3c; }
+  .btn-red    { background: #b71c1c; } .btn-red:hover    { background: #c62828; }
+  .btn-outline { background: #fff; color: #1a1a1a; border: 1px solid #1a1a1a; }
+  .btn-outline:hover { background: #f5f5f0; }
+  .error-msg { color: #b00; font-size: 0.85em; margin-top: 8px; min-height: 1em; }
+  .ok-msg    { color: #2e7d32; font-size: 0.85em; margin-top: 8px; min-height: 1em; }
+
+  #main-panel { display: none; max-width: 1100px; margin: 0 auto; padding: 0 16px 60px; }
+  #main-panel.active { display: block; }
+
+  /* Loading overlay */
+  #loading-overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,.85);
+    z-index:2000; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+  #loading-overlay.active { display:flex; }
+  #loading-overlay .load-msg { font-size:1em; color:#555; }
+  #loading-overlay .load-spinner { width:36px; height:36px; border:3px solid #ddd;
+    border-top-color:#1a1a1a; border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .panel-header { display: flex; flex-direction: column; padding: 18px 0 12px; gap: 10px; }
+  .panel-header-row1 { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+  .panel-header-row1 h1 { font-size: 1.2em; flex-shrink: 0; white-space: nowrap; }
+  .panel-header-row2 { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+                       background: #f8f8f4; border: 1px solid #eee; font-size: 0.78em; flex-wrap: wrap; }
+  .panel-header-row2 .ph-label { color: #888; white-space: nowrap; flex-shrink: 0; }
+  .panel-header-row2 input[type=text] { flex: 1; min-width: 0; padding: 3px 6px;
+    font-size: 0.78em; border: 1px solid #ddd; font-family: monospace; width: auto; }
+  .panel-header-row2 select { padding: 3px 6px; font-size: 0.82em;
+    border: 1px solid #ddd; font-family: inherit; background: #fff; width: auto; }
+  .panel-header-row2 .ph-sep { color: #ddd; flex-shrink: 0; }
+  .panel-header-row2 .btn-ph { padding: 3px 12px; font-size: 0.78em; margin-top: 0;
+    flex-shrink: 0; cursor: pointer; }
+
+  .track-selector-bar { background: #fff; border: 1px solid #ddd; padding: 16px 24px;
+                        display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 0; }
+  .track-selector-bar label { margin: 0; font-size: 0.88em; white-space: nowrap; color: #555; }
+  .track-selector-bar select { flex: 1; min-width: 260px; padding: 8px 10px; border: 1px solid #bbb;
+                                font-size: 0.95em; font-family: inherit; background: #fff; cursor: pointer; }
+  #no-tracks { font-size: 0.85em; color: #888; font-style: italic; }
+
+  .tab-bar { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 20px; margin-top: 16px; }
+  .tab { padding: 10px 24px; font-size: 0.92em; font-family: inherit; cursor: pointer;
+         background: none; border: none; border-bottom: 3px solid transparent;
+         margin-bottom: -2px; color: #666; transition: color 0.15s; }
+  .tab:hover { color: #1a1a1a; }
+  .tab.active { color: #1a1a1a; border-bottom-color: #1a1a1a; font-weight: bold; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .card { background: #fff; border: 1px solid #ddd; padding: 24px 28px; margin-bottom: 18px; }
+  .card h2 { font-size: 1em; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #eee;
+             text-transform: uppercase; letter-spacing: 0.05em; color: #555; font-weight: normal; }
+  .row2 { display: flex; gap: 14px; flex-wrap: wrap; }
+  .row2 .field { flex: 1; min-width: 140px; }
+  .field label { margin-top: 0; margin-bottom: 5px; }
+
+  .status-bar { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+                background: #f8f8f4; border: 1px solid #eee; margin-bottom: 16px; font-size: 0.9em; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .dot.open   { background: #4caf50; box-shadow: 0 0 5px #4caf5088; }
+  .dot.closed { background: #aaa; }
+  .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .badge { display: inline-block; padding: 1px 8px; font-size: 0.78em; border-radius: 2px; margin-left: 6px; }
+  .badge-exam     { background: #e3f0ff; color: #1a3c5c; }
+  .badge-practice { background: #fff8e1; color: #7b5e00; }
+  .note { font-size: 0.8em; color: #888; margin-top: 8px; line-height: 1.5; }
+  .hint { font-size: 0.76em; color: #999; margin-top: 3px; }
+
+  .monitor-info-bar { background: #fff; border: 1px solid #ddd; padding: 14px 24px; margin-bottom: 14px;
+                      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .monitor-meta { font-size: 0.88em; color: #555; }
+  .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #last-update { font-size: 0.78em; color: #888; }
+  .stats-row { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .stat-card { background: #fff; border: 1px solid #ddd; padding: 14px 20px; flex: 1; min-width: 130px; }
+  .stat-card .num { font-size: 1.9em; font-weight: bold; line-height: 1; }
+  .stat-card .lbl { font-size: 0.76em; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+  .stat-card.green .num { color: #2e7d32; }
+  .stat-card.blue  .num { color: #1565c0; }
+  .stat-card.orange .num { color: #e65100; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #ddd; font-size: 0.88em; }
+  thead tr { background: #1a1a1a; color: #fff; }
+  thead th { padding: 9px 11px; text-align: left; font-weight: normal; font-size: 0.82em;
+             text-transform: uppercase; letter-spacing: 0.04em; }
+  tbody tr { border-bottom: 1px solid #eee; }
+  tbody tr:hover { background: #f8f8f4; }
+  tbody tr.finalized { background: #f0f7f0; }
+  tbody td { padding: 8px 11px; }
+  .badge-done { background: #c8e6c9; color: #1b5e20; }
+  .badge-prog { background: #fff9c4; color: #f57f17; }
+  .badge-wait { background: #f5f5f5; color: #666; }
+  .progress-mini { height: 6px; background: #eee; border-radius: 3px; width: 90px; display: inline-block; vertical-align: middle; }
+  .progress-mini-fill { height: 100%; background: #81c784; border-radius: 3px; }
+
+  .res-wrap { overflow-x: auto; }
+  table.res-table { width: auto; min-width: 100%; font-size: 0.78em; border: 1px solid #ddd; }
+  table.res-table thead tr { background: #1a1a1a; color: #fff; }
+  table.res-table thead th { padding: 7px 9px; text-align: center; font-weight: normal;
+    font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  table.res-table thead th.col-name { text-align: left; }
+  table.res-table tbody td { padding: 6px 9px; text-align: center; border-bottom: 1px solid #eee; }
+  table.res-table tbody td.col-name { text-align: left; white-space: nowrap; }
+  table.res-table tbody td.col-score { font-weight: bold; }
+  table.res-table tfoot tr { background: #f0f0e8; font-size: 0.82em; }
+  table.res-table tfoot td { padding: 6px 9px; text-align: center; border-top: 2px solid #ddd; }
+  table.res-table tfoot td.col-name { text-align: left; font-weight: bold; }
+  .cell-ok   { background: #c8e6c9; color: #1b5e20; }
+  .cell-ko   { background: #ffcdd2; color: #b71c1c; }
+  .cell-zero { color: #999; }
+  .hdr-easy  { background: #2e7d32 !important; }
+  .hdr-hard  { background: #b71c1c !important; }
+
+  .histo-wrap { margin-top: 10px; }
+
+  /* MODAL PREVIEW */
+  #preview-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+                     z-index:1000; align-items:center; justify-content:center; padding:20px; }
+  #preview-overlay.open { display:flex; }
+  #preview-box { background:#fff; border:1px solid #ccc; max-width:680px; width:100%;
+                 max-height:85vh; overflow-y:auto; padding:32px 36px; position:relative; }
+  #preview-box h3 { font-size:0.82em; text-transform:uppercase; letter-spacing:.05em;
+                    color:#888; margin-bottom:12px; font-weight:normal; }
+  #preview-close { position:absolute; top:14px; right:18px; background:none; border:none;
+                   font-size:1.4em; cursor:pointer; color:#888; line-height:1; }
+  #preview-close:hover { color:#1a1a1a; }
+  .prev-text { font-size:1em; line-height:1.65; margin-bottom:20px; }
+  .prev-opt { padding:8px 12px; margin-bottom:6px; border:1px solid #ddd; font-size:0.9em;
+              display:flex; gap:10px; align-items:flex-start; }
+  .prev-opt.correct { background:#f0f7f0; border-color:#81c784; }
+  .prev-opt-label { font-weight:bold; flex-shrink:0; min-width:20px; }
+  .prev-fitb { font-family:monospace; font-size:0.9em; padding:8px 12px;
+               background:#f8f8f8; border:1px solid #ddd; margin-bottom:6px; }
+  .prev-meta { font-size:0.78em; color:#999; margin-top:16px; line-height:1.8; }
+  .prev-btn { background:none; border:none; cursor:pointer; color:#888; font-size:0.82em;
+              padding:2px 6px; flex-shrink:0; line-height:1; }
+  .prev-btn:hover { color:#1a1a1a; }
+  .add-btn { background:none; border:1px solid #bbb; cursor:pointer; color:#555; font-size:0.88em;
+             padding:2px 7px; flex-shrink:0; line-height:1.4; border-radius:2px; }
+  .add-btn:hover { background:#e8f4e8; border-color:#4caf50; color:#2e7d32; }
+  .q-row.used { opacity: 0.45; }
+  .q-row.used .add-btn { cursor: not-allowed; }
+
+  .q-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px;
+            border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.1s; }
+  .q-row:hover { background: #f8f8f4; }
+  .q-row.selected { background: #e8f4e8; }
+  .q-row input[type=checkbox] { margin-top: 3px; flex-shrink: 0; }
+  .q-row-body { flex: 1; font-size: 0.84em; line-height: 1.45; }
+  .q-row-meta { font-size: 0.75em; color: #888; margin-top: 3px; }
+  .q-row-pts  { font-size: 0.78em; color: #555; flex-shrink: 0; white-space: nowrap; }
+  .stat-badge { font-size:0.72em; padding:1px 6px; border-radius:3px; flex-shrink:0; white-space:nowrap; cursor:default; }
+  .stat-never { background:#eee; color:#999; }
+  .stat-easy  { background:#d4edda; color:#155724; }
+  .stat-med   { background:#fff3cd; color:#856404; }
+  .stat-hard  { background:#f8d7da; color:#721c24; }
+  .stato-badge { display:inline-block; font-size:0.72em; padding:1px 7px; border-radius:2px;
+                 flex-shrink:0; white-space:nowrap; cursor:pointer; user-select:none; }
+  .stato-bozza      { background:#fff3cd; color:#856404; border:1px solid #ffe08a; }
+  .stato-verificato { background:#d4edda; color:#155724; border:1px solid #b8dfc4; }
+  .stato-bozza:hover      { background:#ffe8a1; }
+  .stato-verificato:hover { background:#b8dfc4; }
+
+  .sel-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+             border-bottom: 1px solid #eee; font-size: 0.83em; }
+  .sel-row .sel-num { width: 20px; text-align: right; color: #aaa; flex-shrink: 0; font-size: 0.78em; }
+  .sel-row .sel-text { flex: 1; line-height: 1.35; }
+  .sel-row .sel-pts { color: #777; flex-shrink: 0; font-size: 0.78em; }
+  .sel-arrows { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+  .sel-arrows button { background: none; border: 1px solid #ddd; font-size: 0.7em;
+                       padding: 1px 5px; cursor: pointer; line-height: 1.4; color: #555; }
+  .sel-arrows button:hover { background: #eee; }
+  .sel-remove { background: none; border: none; color: #b00; font-size: 1em;
+                cursor: pointer; padding: 0 2px; flex-shrink: 0; line-height: 1; }
+  .sel-remove:hover { color: #800; }
+  .tag-chip { display: inline-block; padding: 1px 7px; font-size: 0.72em; background: #e8f0fe;
+              color: #1a3c6e; border-radius: 10px; margin: 2px 2px 0 0; }
+  .rule-row { display: flex; align-items: center; gap: 8px; padding: 8px 0;
+              border-bottom: 1px solid #eee; flex-wrap: wrap; font-size: 0.88em; }
+  .rule-row:last-child { border-bottom: none; }
+  .rule-row select, .rule-row input[type=number] { padding: 5px 7px; border: 1px solid #bbb;
+              font-family: inherit; font-size: 0.95em; background: #fff; }
+  .rule-row input[type=number] { width: 60px; }
+  .rule-count { font-size: 0.78em; color: #2e7d32; font-style: italic; }
+  .rule-count.zero { color: #b00; }
+  .histo-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 0.82em; }
+  .histo-label { width: 52px; text-align: right; color: #555; flex-shrink: 0; }
+  .histo-bar-bg { flex: 1; background: #eee; height: 18px; position: relative; overflow: hidden; }
+  .histo-bar-fill { height: 100%; background: #1a1a1a; transition: width 0.3s; }
+  .histo-count { width: 28px; color: #555; flex-shrink: 0; }
+
+  /* Dettaglio risposte studente */
+  #student-detail-card { margin-top: 18px; scroll-margin-top: 20px; }
+  #student-detail-card h2 { cursor: default; }
+  .detail-student-hdr { display:flex; align-items:baseline; gap:16px; margin-bottom:14px; flex-wrap:wrap; }
+  .detail-student-name { font-size:1.05em; font-weight:bold; }
+  .detail-student-score { font-size:0.92em; color:#555; }
+  .detail-table { width:100%; border-collapse:collapse; font-size:0.84em; }
+  .detail-table th { text-align:left; font-weight:normal; color:#888; text-transform:uppercase;
+    font-size:0.78em; letter-spacing:0.04em; padding:4px 8px 8px; border-bottom:1px solid #eee; }
+  .detail-table td { padding:7px 8px; border-bottom:1px solid #f0f0ec; vertical-align:top; }
+  .detail-table tr:last-child td { border-bottom:none; }
+  .detail-table .col-n   { width:28px; text-align:right; color:#aaa; font-size:0.85em; }
+  .detail-table .col-tipo { width:72px; }
+  .detail-table .col-pt  { width:50px; text-align:center; font-weight:bold; }
+  .detail-q-text { line-height:1.4; color:#1a1a1a; }
+  .detail-ans  { line-height:1.4; }
+  .detail-ans-ok  { color:#2e7d32; }
+  .detail-ans-ko  { color:#b00; }
+  .detail-ans-na  { color:#aaa; font-style:italic; }
+  .detail-ans-free { color:#555; font-style:italic; }
+  .detail-tipo-badge { display:inline-block; padding:1px 6px; font-size:0.75em;
+    background:#f0f0ec; color:#555; border-radius:2px; }
+  .res-row-click { cursor:pointer; }
+  .res-row-click:hover td { background:#fafaf7; }
+  .res-row-click.selected td { background:#e8f0fe; }
+
+  /* Crossref tracce → esami */
+  #crossref-card { margin-bottom: 12px; }
+  #crossref-card table { width: 100%; border-collapse: collapse; font-size: 0.83em; }
+  #crossref-card th { text-align: left; font-weight: normal; color: #888;
+    text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.8em;
+    padding: 4px 10px 8px; border-bottom: 1px solid #eee; }
+  #crossref-card td { padding: 6px 10px; border-bottom: 1px solid #f0f0ec; vertical-align: top; }
+  #crossref-card tr:last-child td { border-bottom: none; }
+  #crossref-card .tr-nome { font-weight: bold; color: #1a1a1a; white-space: nowrap; }
+  #crossref-card .tr-id   { font-size: 0.78em; color: #aaa; font-family: monospace; }
+  .esame-pill { display: inline-block; padding: 2px 9px; margin: 2px 3px 2px 0;
+    font-size: 0.82em; border: 1px solid #ddd; border-radius: 3px;
+    cursor: pointer; white-space: nowrap; }
+  .esame-pill:hover { background: #f0f0ec; }
+  .esame-pill.open   { border-color: #81c784; color: #2e7d32; }
+  .esame-pill.closed { border-color: #bbb; color: #666; }
+  .esame-pill .pill-dot { font-size: 0.7em; margin-right: 2px; }
+  .traccia-esami-inline { display: inline; }
+  .traccia-esami-inline .esame-pill { font-size: 0.78em; }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="load-spinner"></div>
+  <div class="load-msg" id="loading-msg">Caricamento…</div>
+</div>
+
+<div id="test-banner" style="display:none;background:#b71c1c;color:#fff;text-align:center;padding:6px;font-size:0.85em;font-weight:600;letter-spacing:0.04em;">
+  🧪 AMBIENTE DI TEST — i dati non sono reali
+</div>
+<header id="site-header">
+  <img src="logo_unisannio.png" alt="Università degli Studi del Sannio — DST">
+</header>
+
+<div id="login-panel">
+  <h1>Pannello Amministratore</h1>
+  <p class="subtitle">QuizForge v2 — Applicazioni di Bioinformatica</p>
+  <p id="build-label-login" style="font-size:0.75em;color:#bbb;font-family:monospace;margin-top:4px;"></p>
+  <label for="pwd">Password amministratore</label>
+  <input type="password" id="pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()">
+  <div id="login-error" class="error-msg"></div>
+  <button class="btn" onclick="doLogin()">Accedi</button>
+</div>
+
+<div id="main-panel">
+
+  <div class="panel-header">
+    <!-- Riga 1: titolo + cartella Drive + Aggiorna + Esci -->
+    <div class="panel-header-row1">
+      <h1>QuizForge Admin <span id="build-label" style="font-size:0.55em;color:#bbb;font-weight:normal;font-family:monospace;"></span></h1>
+      <span style="font-size:0.78em;color:#888;white-space:nowrap;flex-shrink:0;margin-left:16px;">Cartella Drive:</span>
+      <input type="text" id="cfg-folder-url" placeholder="URL o ID cartella Drive"
+        style="flex:1;min-width:180px;max-width:320px;font-size:0.78em;padding:3px 8px;border:1px solid #ddd;font-family:monospace;"
+        onkeydown="if(event.key==='Enter') loadDriveList()">
+      <a id="link-folder" href="#" target="_blank" style="font-size:0.82em;color:#888;text-decoration:none;flex-shrink:0;" title="Apri cartella">↗</a>
+      <span id="drive-msg" style="font-size:0.78em;color:#888;white-space:nowrap;flex-shrink:0;"></span>
+      <button class="btn btn-sm btn-outline" onclick="logout()" style="margin-left:auto;flex-shrink:0;">Esci</button>
+    </div>
+    <!-- Riga 2: dropdown fogli + nuovo + Apps Script -->
+    <div class="panel-header-row2">
+      <span class="ph-label">Domande:</span>
+      <select id="drive-qs-select" onchange="driveSelectChanged('qs')" style="min-width:160px;max-width:260px;">
+        <option value="">— seleziona —</option>
+      </select>
+      <a id="link-questions" href="#" target="_blank" style="color:#888;text-decoration:none;flex-shrink:0;" title="Apri foglio domande">↗</a>
+      <button class="btn btn-outline btn-ph" onclick="createNewSheet('questions')">+ Nuovo</button>
+      <span class="ph-sep">|</span>
+      <span class="ph-label">Risultati:</span>
+      <select id="drive-rs-select" onchange="driveSelectChanged('rs')" style="min-width:160px;max-width:260px;">
+        <option value="">— seleziona —</option>
+      </select>
+      <a id="link-results" href="#" target="_blank" style="color:#888;text-decoration:none;flex-shrink:0;" title="Apri foglio risultati">↗</a>
+      <button class="btn btn-outline btn-ph" onclick="createNewSheet('results')">+ Nuovo</button>
+      <span class="ph-sep">|</span>
+      <span class="ph-label">Apps Script:</span>
+      <input type="text" id="cfg-script-url" placeholder="URL deployment Apps Script"
+        style="min-width:160px;max-width:280px;" onchange="saveSheetConfig()">
+      <a id="link-script" href="#" target="_blank" style="color:#888;text-decoration:none;flex-shrink:0;" title="Apri editor Apps Script">↗</a>
+      <span id="cfg-msg" style="font-size:0.78em;white-space:nowrap;flex-shrink:0;"></span>
+    </div>
+    <!-- Campi nascosti per ID correnti -->
+    <input type="hidden" id="cfg-qs-url">
+    <input type="hidden" id="cfg-rs-url">
+  </div>
+
+  <div class="track-selector-bar">
+    <label for="esame-select">Esame:</label>
+    <select id="esame-select" onchange="onEsameChange()">
+      <option value="">— caricamento… —</option>
+    </select>
+    <button class="btn btn-sm btn-outline" onclick="selectNewEsame()" style="margin-top:0;flex-shrink:0;">+ Nuovo esame</button>
+    <span id="no-tracks" style="display:none;font-size:0.85em;color:#888;font-style:italic;">Nessun esame trovato.</span>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" id="tab-admin"     onclick="switchTab('admin')">Esame</button>
+    <button class="tab"        id="tab-monitor"   onclick="switchTab('monitor')">Monitor studenti</button>
+    <button class="tab"        id="tab-risultati" onclick="switchTab('risultati')">Risultati</button>
+    <button class="tab"        id="tab-domande"   onclick="switchTab('domande')">Tracce</button>
+  </div>
+
+  <!-- TAB: ESAME -->
+  <div class="tab-panel active" id="panel-admin">
+    <div id="admin-placeholder" style="color:#888;font-size:0.9em;font-style:italic;padding:20px 0;">
+      Seleziona un esame dal menu o creane uno nuovo.
+    </div>
+    <div id="track-card" style="display:none;">
+
+      <!-- Form: nuovo esame -->
+      <div id="new-track-form" class="card" style="display:none;">
+        <h2>Nuovo esame</h2>
+        <div class="row2">
+          <div class="field" style="flex:2;min-width:180px;">
+            <label for="new-traccia-ref">Traccia</label>
+            <select id="new-traccia-ref"><option value="">— seleziona —</option></select>
+          </div>
+          <div class="field" style="flex:2;min-width:180px;">
+            <label for="new-corso">Corso</label>
+            <input type="text" id="new-corso" autocomplete="new-password" placeholder="Es. Applicazioni di Bioinformatica">
+          </div>
+          <div class="field" style="min-width:140px;">
+            <label for="new-date">Data</label>
+            <input type="date" id="new-date" autocomplete="new-password">
+          </div>
+          <div class="field" style="min-width:110px;">
+            <label for="new-dur">Durata (min)</label>
+            <input type="number" id="new-dur" autocomplete="new-password" value="90" min="0" max="240" step="5">
+          </div>
+          <div class="field" style="min-width:140px;">
+            <label for="new-mode">Modalità</label>
+            <select id="new-mode">
+              <option value="exam">Esame</option>
+              <option value="practice">Esercitazione</option>
+            </select>
+          </div>
+          <div class="field" style="flex:2;min-width:180px;">
+            <label for="new-pwd">Password <span style="font-weight:normal;color:#aaa;">(vuoto = nessuna)</span></label>
+            <input type="text" id="new-pwd" placeholder="Nessuna password" autocomplete="off" style="font-family:monospace;">
+          </div>
+          <div class="field" style="min-width:140px;">
+            <label for="new-shuffle">Shuffle opzioni</label>
+            <select id="new-shuffle">
+              <option value="si">Abilitato (default)</option>
+              <option value="no">Disabilitato</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-green" style="margin-top:0;" onclick="doCreateEsame()">Crea esame</button>
+          <span id="create-msg" style="font-size:0.85em;"></span>
+        </div>
+      </div>
+
+      <!-- Card esame esistente: stato + campi unificati -->
+      <div class="card" id="esame-status-card">
+
+        <!-- Stato + azioni -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+          <div class="dot" id="status-dot"></div>
+          <strong id="status-stato" style="font-size:1em;letter-spacing:.03em;"></strong>
+          <span id="status-badge"></span>
+          <code style="font-size:0.78em;color:#aaa;margin-left:4px;" id="status-examid"></code>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;">
+            <button class="btn btn-sm btn-green" onclick="setStatus('open')">▶ Apri</button>
+            <button class="btn btn-sm btn-red"   onclick="setStatus('closed')">■ Chiudi</button>
+            <a id="link-prova" href="#" target="_blank" class="btn btn-sm btn-outline" style="text-decoration:none;">↗ Prova esame</a>
+            <button class="btn btn-sm btn-outline" onclick="duplicateEsame()">Duplica</button>
+          </div>
+          <div id="status-msg" class="ok-msg" style="width:100%;margin:2px 0 0;min-height:1em;"></div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid #eee;margin:0 0 16px;">
+
+        <!-- Campi esame -->
+        <div class="row2">
+          <div class="field" style="flex:2;min-width:180px;">
+            <label for="cfg-traccia-ref">Traccia</label>
+            <select id="cfg-traccia-ref" onchange="onEsameTracciaChange()">
+              <option value="">— seleziona —</option>
+            </select>
+          </div>
+          <div class="field" style="flex:2;min-width:180px;">
+            <label for="cfg-corso">Corso</label>
+            <input type="text" id="cfg-corso" autocomplete="new-password" placeholder="Es. Applicazioni di Bioinformatica">
+          </div>
+          <div class="field" style="min-width:140px;">
+            <label for="cfg-date">Data</label>
+            <input type="date" id="cfg-date" autocomplete="new-password">
+          </div>
+          <div class="field" style="min-width:110px;">
+            <label for="cfg-dur">Durata (min)</label>
+            <input type="number" id="cfg-dur" autocomplete="new-password" min="0" max="240" step="5">
+            <p class="hint">0 = illimitata</p>
+          </div>
+          <div class="field" style="min-width:140px;">
+            <label for="cfg-mode">Modalità</label>
+            <select id="cfg-mode">
+              <option value="exam">Esame</option>
+              <option value="practice">Esercitazione</option>
+            </select>
+          </div>
+          <div class="field" style="flex:2;min-width:180px;">
+            <label for="cfg-pwd">Password <span style="font-weight:normal;color:#aaa;">(solo esame)</span></label>
+            <input type="text" id="cfg-pwd" placeholder="Nessuna" autocomplete="off" style="font-family:monospace;">
+          </div>
+          <div class="field" style="min-width:140px;">
+            <label for="cfg-shuffle">Shuffle opzioni</label>
+            <select id="cfg-shuffle">
+              <option value="si">Abilitato (default)</option>
+              <option value="no">Disabilitato</option>
+            </select>
+            <p class="hint">Disabilita per esami formali</p>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button class="btn btn-sm" style="margin-top:0;" onclick="saveTrack()">Salva</button>
+          <div id="edit-msg" class="ok-msg" style="margin:0;"></div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAB: MONITOR STUDENTI -->
+  <div class="tab-panel" id="panel-monitor">
+    <div id="monitor-placeholder" style="color:#888;font-size:0.9em;font-style:italic;padding:20px 0;">
+      Seleziona una traccia per monitorare gli studenti.
+    </div>
+    <div id="monitor-loading" style="display:none;color:#888;font-size:0.9em;font-style:italic;padding:20px 0;">
+      Caricamento in corso…
+    </div>
+    <div id="monitor-content" style="display:none;">
+      <div class="monitor-info-bar">
+        <div class="monitor-meta" id="monitor-meta"></div>
+        <div class="controls">
+          <button class="btn btn-sm" onclick="loadMonitorData()">↻ Aggiorna ora</button>
+          <span id="monitor-updating" style="display:none;font-size:0.78em;color:#aaa;font-style:italic;">Aggiornamento…</span>
+          <span id="last-update"></span>
+          <span style="font-size:0.78em;color:#aaa;">auto ogni 30s</span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card blue">  <div class="num" id="stat-total">—</div><div class="lbl">Connessi</div></div>
+        <div class="stat-card orange"><div class="num" id="stat-prog">—</div> <div class="lbl">In corso</div></div>
+        <div class="stat-card green"> <div class="num" id="stat-done">—</div> <div class="lbl">Consegnati</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0 4px;border-top:1px solid #eee;margin-top:8px;">
+        <span style="font-size:0.88em;color:#555;">Tempo extra:</span>
+        <input type="number" id="extra-minutes-input" value="10" step="5" style="width:64px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:0.9em;">
+        <span style="font-size:0.88em;color:#555;">min</span>
+        <button class="btn btn-sm" onclick="doAddExtraTime('all')">+ Tutti</button>
+        <button class="btn btn-sm" id="btn-extra-student" onclick="doAddExtraTime('student')" disabled style="opacity:0.5;">+ Studente selezionato</button>
+        <span id="extra-student-label" style="font-size:0.85em;color:#1565c0;font-style:italic;"></span>
+        <span id="extra-time-msg" style="font-size:0.85em;margin-left:4px;"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0 4px;border-top:1px solid #eee;margin-top:4px;">
+        <span style="font-size:0.88em;color:#555;">Ripresa sessione:</span>
+        <span id="resume-status-badge" style="font-size:0.85em;font-weight:600;padding:2px 10px;border-radius:10px;background:#eee;color:#888;">OFF</span>
+        <button class="btn btn-sm" id="btn-resume-toggle" onclick="doToggleResume()">Abilita ripresa</button>
+        <span id="resume-warning" style="display:none;font-size:0.85em;color:#b00;font-weight:600;">⚠ RIPRESA ATTIVA — gli studenti possono recuperare la sessione da qualsiasi dispositivo</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Matricola</th><th>Nominativo</th><th>Email</th>
+            <th>Inizio</th><th>Fine</th><th>Durata</th>
+            <th>Risposte</th><th>Voto</th><th>Stato</th>
+          </tr>
+        </thead>
+        <tbody id="monitor-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB: TRACCE -->
+  <div class="tab-panel" id="panel-domande">
+    <div id="domande-loading" style="display:none;color:#888;font-size:0.9em;font-style:italic;padding:20px 0;">
+      Caricamento in corso…
+    </div>
+    <div id="domande-content" style="display:block;">
+
+      <!-- Panoramica tracce → esami -->
+      <div class="card" id="crossref-card">
+        <h2 style="cursor:pointer;user-select:none;" onclick="toggleCrossref()">
+          Panoramica tracce / esami
+          <span id="crossref-toggle" style="font-size:0.85em;color:#aaa;font-weight:normal;margin-left:8px;">▲</span>
+        </h2>
+        <div id="crossref-body"></div>
+      </div>
+
+      <!-- Selettore traccia + nome -->
+      <div class="card" style="margin-bottom:16px;padding:16px 20px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <label style="font-size:0.88em;color:#555;white-space:nowrap;margin:0;">Traccia:</label>
+          <select id="traccia-select" onchange="onTracciaChange()" style="flex:1;min-width:220px;padding:7px 10px;border:1px solid #bbb;font-size:0.95em;font-family:inherit;background:#fff;">
+            <option value="">— seleziona —</option>
+            <option value="__new__">+ Crea nuova traccia</option>
+          </select>
+          <span id="traccia-esami-info" style="font-size:0.8em;color:#888;"></span>
+        </div>
+        <!-- Form nuova traccia -->
+        <div id="new-traccia-form" style="display:none;margin-top:14px;">
+          <div class="row2">
+            <div class="field" style="flex:3;min-width:220px;">
+              <label for="new-traccia-nome">Nome traccia</label>
+              <input type="text" id="new-traccia-nome" placeholder="Es. Set domande mutazioni puntiformi">
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;align-items:center;">
+            <button class="btn btn-sm btn-green" style="margin-top:0;" onclick="doCreateTraccia()">Crea traccia</button>
+            <span id="create-traccia-msg" style="font-size:0.85em;"></span>
+          </div>
+        </div>
+        <!-- Modifica nome traccia esistente -->
+        <div id="edit-traccia-form" style="display:none;margin-top:14px;">
+          <div class="row2">
+            <div class="field" style="flex:3;min-width:220px;">
+              <label for="cfg-traccia-nome">Nome traccia</label>
+              <input type="text" id="cfg-traccia-nome" placeholder="Nome traccia">
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;align-items:center;">
+            <button class="btn btn-sm" style="margin-top:0;" onclick="saveTracciaNome()">Salva nome</button>
+            <span id="save-traccia-nome-msg" style="font-size:0.85em;"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Riga inferiore: due colonne fianco a fianco -->
+      <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+
+        <!-- Colonna sinistra: domande traccia -->
+        <div style="flex:1;min-width:280px;">
+          <div class="card" style="padding:0;overflow:hidden;">
+            <div style="padding:10px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+              <h2 style="margin:0;padding:0;border:none;">Domande nella traccia</h2>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span id="items-count" style="font-size:0.82em;color:#888;">0 slot — 0 pt</span>
+                <button id="btn-clear-items" class="btn btn-sm btn-outline" onclick="clearItems()" style="color:#b00;border-color:#b00;margin-top:0;">Svuota</button>
+              </div>
+            </div>
+            <div id="items-list" style="max-height:520px;overflow-y:auto;min-height:60px;"></div>
+          </div>
+          <!-- Azioni salva items traccia -->
+          <div id="actions-edit" style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-sm" onclick="saveTrackItems()">Salva domande traccia</button>
+            <span id="save-items-msg" style="font-size:0.85em;"></span>
+          </div>
+          <div id="items-esami-warn" style="display:none;margin-top:10px;padding:8px 12px;background:#fff8e1;border:1px solid #ffe082;font-size:0.82em;color:#7a5300;"></div>
+        </div>
+
+        <!-- Colonna destra: aggiungi domande -->
+        <div id="browser-col" style="flex:1;min-width:280px;">
+          <div class="card" style="padding:0;overflow:hidden;">
+            <div style="padding:16px 20px;border-bottom:1px solid #eee;">
+              <h2 style="margin:0;padding:0;border:none;">Domande nel database</h2>
+              <div class="row2" style="margin-top:12px;flex-wrap:nowrap;">
+                <div class="field" style="min-width:0;flex:2;">
+                  <label for="f-cat">Categoria</label>
+                  <select id="f-cat" onchange="onCatChange()">
+                    <option value="">— tutte —</option>
+                  </select>
+                </div>
+                <div class="field" style="min-width:0;flex:2;">
+                  <label for="f-subcat">Sottocategoria</label>
+                  <select id="f-subcat" onchange="filterQuestions()">
+                    <option value="">— tutte —</option>
+                  </select>
+                </div>
+                <div class="field" style="min-width:0;flex:1;">
+                  <label for="f-tag">Tag</label>
+                  <select id="f-tag" onchange="filterQuestions()">
+                    <option value="">— tutti —</option>
+                  </select>
+                </div>
+                <div class="field" style="min-width:0;flex:1;">
+                  <label for="f-pts">Punteggio</label>
+                  <select id="f-pts" onchange="filterQuestions()">
+                    <option value="">— tutti —</option>
+                  </select>
+                </div>
+                <div class="field" style="min-width:0;flex:1;">
+                  <label for="f-stato">Stato</label>
+                  <select id="f-stato" onchange="filterQuestions()">
+                    <option value="">— tutti —</option>
+                    <option value="verificato">✓ Verificato</option>
+                    <option value="bozza">✎ Bozza</option>
+                  </select>
+                </div>
+              </div>
+              <div style="margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <span style="font-size:0.82em;color:#888;" id="q-count"></span>
+                <button class="btn btn-sm btn-outline" onclick="addRandomItem()" style="margin-top:0;">🎲 Aggiungi casuale</button>
+                <button id="btn-stats" class="btn btn-sm btn-outline" onclick="loadQuestionStats()" style="margin-top:0;">📊 Statistiche</button>
+              </div>
+            </div>
+            <div id="q-browser" style="max-height:480px;overflow-y:auto;"></div>
+            <div id="q-loading" style="padding:20px;color:#888;font-size:0.88em;font-style:italic;">Caricamento domande…</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAB: RISULTATI -->
+  <div class="tab-panel" id="panel-risultati">
+    <div id="risultati-placeholder" style="color:#888;font-size:0.9em;font-style:italic;padding:20px 0;">
+      Seleziona una traccia per visualizzare i risultati.
+    </div>
+    <div id="risultati-loading" style="display:none;color:#888;font-size:0.9em;font-style:italic;padding:20px 0;">
+      Caricamento in corso…
+    </div>
+    <div id="risultati-content" style="display:none;">
+      <div class="monitor-info-bar">
+        <div class="monitor-meta" id="risultati-meta"></div>
+        <div class="controls">
+          <button class="btn btn-sm" onclick="loadRisultatiData()">↻ Aggiorna</button>
+          <span id="risultati-updating" style="display:none;font-size:0.78em;color:#aaa;font-style:italic;">Aggiornamento…</span>
+          <span id="risultati-last-update"></span>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card blue">  <div class="num" id="res-stat-n">—</div>   <div class="lbl">Consegnati</div></div>
+        <div class="stat-card green"> <div class="num" id="res-stat-avg">—</div> <div class="lbl">Media</div></div>
+        <div class="stat-card orange"><div class="num" id="res-stat-med">—</div> <div class="lbl">Mediana</div></div>
+      </div>
+      <div class="card" style="margin-bottom:18px;">
+        <h2>Distribuzione punteggi</h2>
+        <div class="histo-wrap" id="histo-wrap"></div>
+      </div>
+      <div class="card">
+        <h2>Punteggi per domanda
+          <span style="font-weight:normal;font-size:0.85em;color:#888;margin-left:12px;">
+            <span style="display:inline-block;width:12px;height:12px;background:#c8e6c9;vertical-align:middle;margin-right:4px;"></span>≥80% corretto
+            &nbsp;
+            <span style="display:inline-block;width:12px;height:12px;background:#ffcdd2;vertical-align:middle;margin-right:4px;"></span>≤20% corretto
+            <span style="margin-left:12px;color:#aaa;">· clicca uno studente per il dettaglio risposte ↓</span>
+          </span>
+        </h2>
+        <div class="res-wrap">
+          <table class="res-table" id="res-table">
+            <thead id="res-thead"></thead>
+            <tbody id="res-tbody"></tbody>
+            <tfoot id="res-tfoot"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="student-detail-card" style="display:none;">
+        <h2>Dettaglio risposte — <span id="detail-student-name"></span></h2>
+        <div class="detail-student-hdr">
+          <span class="detail-student-score" id="detail-student-score"></span>
+          <button class="btn btn-sm btn-outline" style="margin-top:0;" onclick="closeStudentDetail()">✕ Chiudi</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="detail-table">
+            <thead><tr>
+              <th class="col-n">#</th>
+              <th class="col-tipo">Tipo</th>
+              <th>Domanda</th>
+              <th>Risposta data</th>
+              <th>Risposta corretta</th>
+              <th class="col-pt">Pt</th>
+            </tr></thead>
+            <tbody id="detail-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL PREVIEW DOMANDA -->
+<div id="preview-overlay" onclick="closePreview(event)">
+  <div id="preview-box">
+    <button id="preview-close" onclick="closePreview()">✕</button>
+    <h3 id="preview-meta-top"></h3>
+    <div id="preview-body"></div>
+    <div id="preview-meta" class="prev-meta"></div>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL      = "https://script.google.com/macros/s/AKfycbzipS7Z8Jnl4jUOPBBSRUkQd-IcW3lcHSCgaWuzaeSagbYJH6roYB0Njw1e8ZXAhZD3/exec";
+const TEST_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyI5a2ejnWKpKnHlThdzpJYU4CWz2IB9GDrrLdXLVXwG4ezGToFZEVVXfb2_VJHkoyNnw/exec";
+const _isTestMode     = new URLSearchParams(window.location.search).has("test");
+const ACTIVE_URL      = (_isTestMode && TEST_SCRIPT_URL) ? TEST_SCRIPT_URL : SCRIPT_URL;
+if (_isTestMode) document.getElementById("test-banner").style.display = "block";
+const BUILD = "15f4f46";
+document.getElementById("build-label-login").textContent = "build " + BUILD;
+document.getElementById("build-label").textContent = "build " + BUILD;
+
+let adminPassword  = "";
+let allEsami       = [];   // sessioni d'esame
+let allTracks      = [];   // tracce (template domande)
+let _tracksLoaded  = false;
+let _tracksPromise = null;
+
+function ensureTracksLoaded() {
+  if (_tracksLoaded) return Promise.resolve();
+  if (_tracksPromise) return _tracksPromise;
+  _tracksPromise = callScript({ action: "getAllTracks", password: adminPassword })
+    .then(rt => {
+      allTracks = rt.tracks || [];
+      _tracksLoaded = true;
+      populateTracciaSelects();
+      renderCrossref();
+    })
+    .catch(() => {})
+    .finally(() => { _tracksPromise = null; });
+  return _tracksPromise;
+}
+let currentEsame   = null; // esame selezionato nel selector bar
+let currentTraccia = null; // traccia selezionata nel tab Tracce
+let refreshTimer   = null;
+let activeTab      = "admin";
+let currentNQ      = 20;
+let currentResultsData = null;  // ultima risposta getResults — usato per dettaglio studente
+let selectedDetailRow  = -1;
+
+async function callScript(payload) {
+  const resp = await fetch(ACTIVE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify(payload)
+  });
+  return resp.json();
+}
+
+// Formatta timestamp dal server ("DD/MM/YYYY HH:mm:ss" o ISO) → "DD/MM HH:mm"
+function fmtTs(s) {
+  if (!s) return "—";
+  const m = String(s).match(/^(\d{2}\/\d{2})\/\d{4}\s+(\d{2}:\d{2})/);
+  if (m) return m[1] + " " + m[2];
+  try {
+    const d = new Date(s);
+    if (!isNaN(d)) {
+      const p = n => String(n).padStart(2, "0");
+      return p(d.getDate()) + "/" + p(d.getMonth()+1) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+    }
+  } catch(e) {}
+  return String(s);
+}
+
+function formatDateIt(dateStr) {
+  if (!dateStr) return "—";
+  const mesi = ["gennaio","febbraio","marzo","aprile","maggio","giugno",
+                "luglio","agosto","settembre","ottobre","novembre","dicembre"];
+  const m = String(dateStr).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return dateStr;
+  return parseInt(m[3]) + " " + (mesi[parseInt(m[2])-1] || m[2]) + " " + m[1];
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ---- LOGIN ----
+function setLoadingMsg(msg) {
+  document.getElementById("loading-msg").textContent = msg;
+}
+
+async function doLogin() {
+  const pwd = document.getElementById("pwd").value.trim();
+  if (!pwd) { document.getElementById("login-error").textContent = "Inserisci la password."; return; }
+  document.getElementById("login-error").textContent = "";
+  document.getElementById("loading-overlay").classList.add("active");
+  setLoadingMsg("Verifica password…");
+  try {
+    const res = await callScript({ action: "getAllEsami", password: pwd });
+    if (res.status === "error") {
+      document.getElementById("loading-overlay").classList.remove("active");
+      document.getElementById("login-error").textContent = res.message || "Errore.";
+      return;
+    }
+    adminPassword = pwd;
+    allEsami = res.esami || [];
+    if (res.version) {
+      document.getElementById("build-label").textContent =
+        "build " + BUILD + " · v" + res.version;
+    }
+    setLoadingMsg("Caricamento configurazione…");
+    await loadSheetConfig();
+
+    // Mostra il pannello
+    document.getElementById("login-panel").style.display = "none";
+    document.getElementById("main-panel").classList.add("active");
+    populateEsameSelect(allEsami);
+    document.getElementById("loading-overlay").classList.remove("active");
+    ensureTracksLoaded();    // background: popola traccia-selects e crossref
+    ensureDriveListLoaded(); // background: popola i select Drive
+  } catch(e) {
+    document.getElementById("loading-overlay").classList.remove("active");
+    document.getElementById("login-error").textContent = "Errore di rete: " + e.message;
+  }
+}
+
+// ---- CONFIGURAZIONE FOGLI ----
+async function loadSheetConfig() {
+  try {
+    const res = await callScript({ action: "getConfig", password: adminPassword });
+    if (res.status !== "ok") return;
+    document.getElementById("cfg-qs-url").value = res.questions_url || "";
+    document.getElementById("cfg-rs-url").value = res.results_url  || "";
+    if (res.questions_url) document.getElementById("link-questions").href = res.questions_url;
+    if (res.results_url)   document.getElementById("link-results").href   = res.results_url;
+    // Pre-popola i select con il foglio attivo (senza caricare tutta la lista Drive)
+    // Quando l'utente apre il dropdown, populateDriveSelect sostituisce con la lista completa
+    if (res.questions_id) {
+      const label = res.questions_name || res.questions_id;
+      document.getElementById("drive-qs-select").innerHTML =
+        `<option value="${res.questions_id}" data-url="${res.questions_url || ''}" selected>${escHtml(label)}</option>`;
+    }
+    if (res.results_id) {
+      const label = res.results_name || res.results_id;
+      document.getElementById("drive-rs-select").innerHTML =
+        `<option value="${res.results_id}" data-url="${res.results_url || ''}" selected>${escHtml(label)}</option>`;
+    }
+    if (res.folder_url) {
+      document.getElementById("cfg-folder-url").value = res.folder_url;
+      document.getElementById("link-folder").href = res.folder_url;
+    }
+    if (res.script_editor_url) {
+      document.getElementById("cfg-script-url").value = res.script_editor_url;
+      document.getElementById("link-script").href = res.script_editor_url;
+    }
+  } catch(e) { /* silenzioso — non blocca il login */ }
+}
+
+function extractSheetId(urlOrId) {
+  const m = String(urlOrId).match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : String(urlOrId).trim();
+}
+
+function extractFolderId(urlOrId) {
+  const m = String(urlOrId).match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : String(urlOrId).trim();
+}
+
+async function saveSheetConfig() {
+  const msg = document.getElementById("cfg-msg");
+  const qsId = extractSheetId(document.getElementById("cfg-qs-url").value.trim());
+  const rsId = extractSheetId(document.getElementById("cfg-rs-url").value.trim());
+  const fId        = extractFolderId(document.getElementById("cfg-folder-url").value.trim());
+  const scriptUrl  = document.getElementById("cfg-script-url").value.trim();
+  msg.style.color = "#555"; msg.textContent = "Salvataggio…";
+  try {
+    const res = await callScript({
+      action: "setConfig", password: adminPassword,
+      questions_id: qsId, results_id: rsId, folder_id: fId,
+      script_editor_url: scriptUrl
+    });
+    if (res.status === "ok") {
+      msg.style.color = "#2e7d32"; msg.textContent = "✓ Salvato";
+      if (qsId) document.getElementById("link-questions").href =
+        "https://docs.google.com/spreadsheets/d/" + qsId + "/edit";
+      if (rsId) document.getElementById("link-results").href =
+        "https://docs.google.com/spreadsheets/d/" + rsId + "/edit";
+      if (fId) document.getElementById("link-folder").href =
+        "https://drive.google.com/drive/folders/" + fId;
+      if (scriptUrl) document.getElementById("link-script").href = scriptUrl;
+      // Ricarica esami e tracce dal nuovo foglio
+      msg.textContent = "✓ Salvato — ricarico esami…";
+      try {
+        const eRes = await callScript({ action: "getAllEsami", password: adminPassword });
+        if (eRes.status === "ok") {
+          allEsami = eRes.esami || [];
+          currentEsame = null;
+          populateEsameSelect(allEsami);
+        }
+        _tracksPromise = null; // invalida cache tracce
+        _driveListLoaded = false; _driveListPromise = null; // invalida cache Drive
+        msg.style.color = "#2e7d32"; msg.textContent = "✓ Salvato";
+      } catch(e) { /* silenzioso — il salvataggio è andato a buon fine */ }
+    } else {
+      msg.style.color = "#b00"; msg.textContent = res.message || "Errore.";
+    }
+  } catch(e) { msg.style.color = "#b00"; msg.textContent = "Errore di rete."; }
+}
+
+// ── Drive folder ─────────────────────────────────────────────────────────────
+let _driveListLoaded  = false;
+let _driveListPromise = null;
+
+// Carica la lista fogli Drive una sola volta; le chiamate successive (es. focus
+// sul select) attendono la stessa promise e non fanno un secondo round-trip.
+function ensureDriveListLoaded() {
+  if (_driveListLoaded) return Promise.resolve();
+  if (_driveListPromise) return _driveListPromise;
+  _driveListPromise = loadDriveList(true)
+    .catch(() => {})
+    .finally(() => { _driveListPromise = null; });
+  return _driveListPromise;
+}
+
+async function loadDriveList(silent = false) {
+  const msg = document.getElementById("drive-msg");
+  const fId = extractFolderId(document.getElementById("cfg-folder-url").value.trim());
+  if (!fId) { if (!silent) { msg.style.color="#b00"; msg.textContent="Inserisci l'URL della cartella."; } return; }
+  msg.style.color = "#555"; msg.textContent = "Caricamento…";
+  try {
+    const res = await callScript({ action: "listDriveFolder", password: adminPassword, folder_id: fId });
+    if (res.status !== "ok") { msg.style.color="#b00"; msg.textContent = res.message||"Errore."; return; }
+    populateDriveSelect("drive-qs-select", res.files);
+    populateDriveSelect("drive-rs-select", res.files);
+    _driveListLoaded = true;
+    msg.style.color = "#2e7d32";
+    msg.textContent = res.files.length ? "✓ " + res.files.length + " fogli" : "Cartella vuota";
+    // Salva folder_id in config se è cambiato
+    document.getElementById("cfg-folder-url").value =
+      "https://drive.google.com/drive/folders/" + fId;
+    document.getElementById("link-folder").href =
+      "https://drive.google.com/drive/folders/" + fId;
+  } catch(e) { msg.style.color="#b00"; msg.textContent="Errore di rete."; }
+}
+
+function populateDriveSelect(selectId, files) {
+  const sel = document.getElementById(selectId);
+  const which = selectId === "drive-qs-select" ? "qs" : "rs";
+  const currentUrl = document.getElementById(which === "qs" ? "cfg-qs-url" : "cfg-rs-url").value.trim();
+  const currentId  = extractSheetId(currentUrl);
+  const placeholder = files.length ? '' : '<option value="">— seleziona —</option>';
+  sel.innerHTML = placeholder +
+    files.map(f => {
+      const selected = (f.id === currentId) ? ' selected' : '';
+      return `<option value="${f.id}" data-url="${f.url}"${selected}>${f.name}</option>`;
+    }).join("");
+  // Aggiorna link riga 1 se c'è una selezione
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.value) {
+    const linkEl = document.getElementById(which === "qs" ? "link-questions" : "link-results");
+    linkEl.href = opt.dataset.url || "#";
+  }
+}
+
+function driveSelectChanged(which) {
+  const sel = document.getElementById(which === "qs" ? "drive-qs-select" : "drive-rs-select");
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+  const urlField = document.getElementById(which === "qs" ? "cfg-qs-url" : "cfg-rs-url");
+  const linkEl   = document.getElementById(which === "qs" ? "link-questions" : "link-results");
+  urlField.value = opt.dataset.url || opt.value;
+  linkEl.href = opt.dataset.url || "#";
+  // Salva automaticamente
+  saveSheetConfig();
+}
+
+async function createNewSheet(type) {
+  const label = type === "questions" ? "domande" : "risultati";
+  const name = prompt("Nome del nuovo foglio " + label + ":");
+  if (!name || !name.trim()) return;
+  const fId = extractFolderId(document.getElementById("cfg-folder-url").value.trim());
+  const msg = document.getElementById("drive-msg");
+  msg.style.color = "#555"; msg.textContent = "Creazione…";
+  try {
+    const res = await callScript({
+      action: "createSheet", password: adminPassword,
+      name: name.trim(), sheet_type: type, folder_id: fId
+    });
+    if (res.status !== "ok") { msg.style.color="#b00"; msg.textContent = res.message||"Errore."; return; }
+    msg.style.color = "#2e7d32"; msg.textContent = "✓ Creato";
+    // Imposta come foglio attivo e salva
+    const urlField = document.getElementById(type === "questions" ? "cfg-qs-url" : "cfg-rs-url");
+    const linkEl   = document.getElementById(type === "questions" ? "link-questions" : "link-results");
+    urlField.value = res.url;
+    if (linkEl) linkEl.href = res.url;
+    await saveSheetConfig();
+    // Ricarica la lista Drive e pre-seleziona il nuovo foglio
+    await loadDriveList();
+    const selId = type === "questions" ? "drive-qs-select" : "drive-rs-select";
+    const sel = document.getElementById(selId);
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].dataset.url === res.url || sel.options[i].value === res.id) {
+        sel.selectedIndex = i; break;
+      }
+    }
+  } catch(e) { msg.style.color="#b00"; msg.textContent="Errore di rete."; }
+}
+
+function logout() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  adminPassword = ""; currentEsame = null; currentTraccia = null; refreshTimer = null; trackItems = []; allEsami = []; allTracks = [];
+  allQuestions = null; _allQuestionsPromise = null;
+  _tracksLoaded = false; _tracksPromise = null;
+  _driveListLoaded = false; _driveListPromise = null;
+  document.getElementById("main-panel").classList.remove("active");
+  document.getElementById("login-panel").style.display = "";
+  document.getElementById("pwd").value = "";
+  document.getElementById("login-error").textContent = "";
+  activeTab = "admin";
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("tab-admin").classList.add("active");
+  document.getElementById("panel-admin").classList.add("active");
+}
+
+// ---- ESAME SELECT ----
+function populateEsameSelect(esami) {
+  const sel = document.getElementById("esame-select");
+  if (esami.length === 0) {
+    sel.innerHTML = '<option value="">— nessun esame —</option>';
+    document.getElementById("no-tracks").style.display = "inline";
+    return;
+  }
+  document.getElementById("no-tracks").style.display = "none";
+  const sorted = [...esami].sort((a,b) => a.stato === b.stato ? 0 : a.stato === "open" ? -1 : 1);
+  sel.innerHTML = '<option value="">— seleziona un esame —</option>';
+  sorted.forEach(e => {
+    const opt  = document.createElement("option");
+    opt.value  = e.exam_id;
+    const icon = e.stato === "open" ? "▶ " : "■ ";
+    const mode = e.modalita === "practice" ? " [esercitazione]" : " [esame]";
+    const t    = allTracks.find(t => t.track_id === e.traccia_id);
+    const name = e.nome && e.nome.trim() ? e.nome : (t ? t.nome : e.traccia_id);
+    opt.textContent = icon + (e.corso ? e.corso + " — " : "") + name + (e.data ? " · " + formatDateIt(e.data) : "") + mode;
+    sel.appendChild(opt);
+  });
+}
+
+function populateTracciaSelects() {
+  // Popola tutti i <select> che elencano le tracce (nel tab Tracce e nei form esame)
+  const opts = '<option value="">— seleziona traccia —</option>' +
+    allTracks.map(t => `<option value="${t.track_id}">${escHtml(t.nome)} <span style="color:#aaa">(${t.track_id})</span></option>`).join("");
+  ["new-traccia-ref","cfg-traccia-ref","traccia-select"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.value;
+    if (id === "traccia-select") {
+      el.innerHTML = '<option value="">— seleziona —</option><option value="__new__">+ Crea nuova traccia</option>' +
+        allTracks.map(t => `<option value="${t.track_id}">${escHtml(t.nome)}</option>`).join("");
+    } else {
+      el.innerHTML = opts;
+    }
+    el.value = prev;
+  });
+}
+
+function selectNewEsame() {
+  currentEsame = null;
+  document.getElementById("esame-select").value = "";
+  updateAdminTab();
+  switchTab("admin");
+}
+
+function onEsameChange() {
+  const examId = document.getElementById("esame-select").value;
+  currentEsame = examId ? (allEsami.find(e => e.exam_id === examId) || null) : null;
+  updateAdminTab();
+  if (activeTab === "monitor")   updateMonitorTab();
+  if (activeTab === "risultati") updateRisultatiTab();
+}
+
+function updateEsameInList(e) {
+  const idx = allEsami.findIndex(x => x.exam_id === e.exam_id);
+  if (idx >= 0) allEsami[idx] = { ...allEsami[idx], ...e };
+  const prev = e.exam_id;
+  populateEsameSelect(allEsami);
+  renderCrossref();
+  document.getElementById("esame-select").value = prev;
+}
+
+// alias per compatibilità con vecchie chiamate residue
+function updateTrackInList(t) { updateEsameInList(t); }
+
+// ---- TABS ----
+function switchTab(name) {
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+  activeTab = name;
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  document.getElementById("panel-" + name).classList.add("active");
+
+  if (name === "monitor")   { updateMonitorTab(); startAutoRefresh(); }
+  else if (name === "risultati") { updateRisultatiTab(); }
+  else if (name === "domande")   { initDomandeTab(); }
+  else { updateAdminTab(); }
+}
+
+// ---- TAB ESAME ----
+function updateAdminTab() {
+  const isNew = (currentEsame === null);
+  const has   = !!currentEsame;
+  document.getElementById("track-card").style.display        = "block";
+  document.getElementById("new-track-form").style.display    = isNew ? "block" : "none";
+  document.getElementById("esame-status-card").style.display = has   ? "block" : "none";
+  populateTracciaSelects();
+  if (!has) return;
+  renderTrackStatus(currentEsame);
+  populateEsameEditForm(currentEsame);
+  updateProvaLink(currentEsame.exam_id);
+  document.getElementById("status-msg").textContent = "";
+  document.getElementById("edit-msg").textContent   = "";
+}
+
+function updateProvaLink(examId) {
+  const a = document.getElementById("link-prova");
+  if (a) a.href = "quiz_v2.html?id=" + encodeURIComponent(examId);
+}
+
+function renderTrackStatus(e) {
+  const isOpen = e.stato === "open";
+  document.getElementById("status-dot").className    = "dot " + (isOpen ? "open" : "closed");
+  document.getElementById("status-stato").textContent = isOpen ? "APERTO" : "CHIUSO";
+  document.getElementById("status-badge").innerHTML  = e.modalita === "practice"
+    ? '<span class="badge badge-practice">Esercitazione</span>'
+    : '<span class="badge badge-exam">Esame</span>';
+  document.getElementById("status-examid").textContent = e.exam_id || "";
+}
+
+function populateEsameEditForm(e) {
+  document.getElementById("cfg-traccia-ref").value = e.traccia_id || "";
+  document.getElementById("cfg-corso").value = e.corso    || "";
+  document.getElementById("cfg-date").value  = e.data     || "";
+  document.getElementById("cfg-dur").value   = e.durata   || "90";
+  document.getElementById("cfg-mode").value  = e.modalita || "exam";
+  document.getElementById("cfg-pwd").value   = e.password || "";
+  document.getElementById("cfg-shuffle").value = e.shuffle === false ? "no" : "si";
+}
+
+async function setStatus(newStatus) {
+  if (!currentEsame) return;
+  const msg = document.getElementById("status-msg");
+  msg.className = "ok-msg"; msg.textContent = "Aggiornamento…";
+  try {
+    const res = await callScript({ action:"setEsame", password:adminPassword, exam_id:currentEsame.exam_id, status:newStatus });
+    if (res.status === "ok") {
+      currentEsame.stato = newStatus;
+      updateEsameInList(currentEsame);
+      renderTrackStatus(currentEsame);
+      msg.textContent = newStatus === "open" ? "✓ Esame aperto." : "✓ Esame chiuso.";
+    } else { msg.className = "error-msg"; msg.textContent = res.message || "Errore."; }
+  } catch(e) { msg.className = "error-msg"; msg.textContent = "Errore di rete: " + e.message; }
+}
+
+async function saveTrack() {
+  if (!currentEsame) return;
+  const msg = document.getElementById("edit-msg");
+  msg.className = "ok-msg"; msg.textContent = "Salvataggio…";
+  try {
+    const res = await callScript({
+      action:"setEsame", password:adminPassword, exam_id:currentEsame.exam_id,
+      traccia_id:     document.getElementById("cfg-traccia-ref").value,
+      corso:          document.getElementById("cfg-corso").value.trim(),
+      exam_date:      document.getElementById("cfg-date").value.trim(),
+      duration:       document.getElementById("cfg-dur").value.trim(),
+      mode:           document.getElementById("cfg-mode").value,
+      track_password: document.getElementById("cfg-pwd").value.trim(),
+      shuffle:        document.getElementById("cfg-shuffle").value
+    });
+    if (res.status === "ok") {
+      currentEsame.traccia_id = document.getElementById("cfg-traccia-ref").value;
+      currentEsame.corso      = document.getElementById("cfg-corso").value.trim();
+      currentEsame.data       = document.getElementById("cfg-date").value.trim();
+      currentEsame.durata     = document.getElementById("cfg-dur").value.trim();
+      currentEsame.modalita   = document.getElementById("cfg-mode").value;
+      currentEsame.password   = document.getElementById("cfg-pwd").value.trim();
+      currentEsame.shuffle    = document.getElementById("cfg-shuffle").value !== "no";
+      updateEsameInList(currentEsame);
+      renderTrackStatus(currentEsame);
+      msg.textContent = "✓ Modifiche salvate.";
+    } else { msg.className = "error-msg"; msg.textContent = res.message || "Errore."; }
+  } catch(e) { msg.className = "error-msg"; msg.textContent = "Errore di rete: " + e.message; }
+}
+
+function onEsameTracciaChange() {
+  // aggiorna in tempo reale il link "prova traccia" se si cambia la traccia associata
+}
+
+// ---- TAB MONITOR ----
+function updateMonitorTab() {
+  const has = !!currentEsame;
+  document.getElementById("monitor-placeholder").style.display = !has ? "block" : "none";
+  document.getElementById("monitor-loading").style.display     = has  ? "block" : "none";
+  document.getElementById("monitor-content").style.display     = "none";
+  if (has) loadMonitorData();
+}
+
+async function loadMonitorData() {
+  if (!currentEsame) return;
+  const isFirstLoad = document.getElementById("monitor-content").style.display === "none";
+  if (isFirstLoad) {
+    document.getElementById("monitor-loading").style.display = "block";
+    document.getElementById("monitor-content").style.display = "none";
+  } else {
+    document.getElementById("monitor-updating").style.display = "inline";
+  }
+  try {
+    const res = await callScript({ action:"getMonitor", password:adminPassword, examId:currentEsame.exam_id });
+    if (res.status === "ok") renderMonitorData(res);
+    document.getElementById("monitor-loading").style.display  = "none";
+    document.getElementById("monitor-updating").style.display = "none";
+    document.getElementById("monitor-content").style.display  = "block";
+    document.getElementById("last-update").textContent = new Date().toLocaleTimeString("it-IT");
+  } catch(e) {
+    document.getElementById("monitor-updating").style.display = "none";
+    if (isFirstLoad) document.getElementById("monitor-loading").textContent = "Errore di caricamento.";
+    console.error("Monitor error:", e);
+  }
+}
+
+function renderMonitorData(res) {
+  const track  = res.track || {};
+  const rows   = res.rows  || [];
+  _resumeAllEnabled = !!res.resume_all;
+  updateResumeBar();
+  // N. domande dinamico: prova a ricavarlo dalla traccia o dai dati
+  const nQ = currentNQ;
+
+  const dateIt  = formatDateIt(track.exam_date || "");
+  const modeLbl = track.mode === "practice" ? " — esercitazione" : "";
+  document.getElementById("monitor-meta").innerHTML =
+    "<code style='font-size:0.85em'>" + escHtml(track.exam_id || "—") + "</code>" +
+    (dateIt ? " &nbsp;|&nbsp; " + dateIt : "") + modeLbl;
+
+  const done = rows.filter(r => r.finalized).length;
+  document.getElementById("stat-total").textContent = rows.length;
+  document.getElementById("stat-prog").textContent  = rows.length - done;
+  document.getElementById("stat-done").textContent  = done;
+
+  const tbody = document.getElementById("monitor-body");
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:#888;">Nessuno studente ancora connesso</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const answered = r.answered || 0;
+    const pct   = Math.round((answered / nQ) * 100);
+    const badge = r.finalized
+      ? '<span class="badge badge-done">Consegnato</span>'
+      : answered > 0
+        ? '<span class="badge badge-prog">In corso</span>'
+        : '<span class="badge badge-wait">Connesso</span>';
+    const score = r.finalized && r.score !== "" ? r.score : "—";
+    const mat = escHtml(String(r.matricola));
+    const nom = escHtml(String(r.nominativo||""));
+    return `<tr class="${r.finalized ? "finalized" : ""}" id="mrow-${mat}" onclick="selectMonitorStudent('${mat}','${nom}')" style="cursor:pointer;">
+      <td>${mat}</td>
+      <td>${escHtml(String(r.nominativo||""))}</td>
+      <td>${escHtml(String(r.email||""))}</td>
+      <td>${fmtTs(r.tsStart)}</td>
+      <td>${r.finalized ? fmtTs(r.tsEnd) : "—"}</td>
+      <td>${r.finalized ? escHtml(String(r.elapsed||"")) : "—"}</td>
+      <td><span style="margin-right:6px;">${answered}/${nQ}</span>
+          <span class="progress-mini"><span class="progress-mini-fill" style="width:${pct}%"></span></span></td>
+      <td>${score}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join("");
+}
+
+function startAutoRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => { if (activeTab === "monitor") loadMonitorData(); }, 30000);
+}
+
+let _selectedMonitorMatricola = null;
+let _selectedMonitorNominativo = null;
+
+function selectMonitorStudent(matricola, nominativo) {
+  _selectedMonitorMatricola = matricola;
+  _selectedMonitorNominativo = nominativo;
+  // Evidenzia riga
+  document.querySelectorAll("#monitor-body tr").forEach(tr => {
+    tr.style.background = tr.id === "mrow-" + matricola ? "#e3f2fd" : "";
+  });
+  const lbl = document.getElementById("extra-student-label");
+  if (lbl) lbl.textContent = nominativo || matricola;
+  const btn = document.getElementById("btn-extra-student");
+  if (btn) { btn.disabled = false; btn.style.opacity = "1"; }
+}
+
+async function doAddExtraTime(scope) {
+  if (!currentEsame) return;
+  const minutes = parseInt(document.getElementById("extra-minutes-input").value, 10);
+  if (isNaN(minutes) || minutes === 0) return;
+  const actualScope = scope === "student" ? _selectedMonitorMatricola : "all";
+  if (scope === "student" && !actualScope) return;
+  const msg = document.getElementById("extra-time-msg");
+  msg.style.color = "#555"; msg.textContent = "…";
+  try {
+    const res = await callScript({
+      action: "addExtraTime", password: adminPassword,
+      exam_id: currentEsame.exam_id, scope: actualScope, minutes
+    });
+    if (res.status === "ok") {
+      const who = scope === "all" ? "tutti" : (_selectedMonitorNominativo || actualScope);
+      msg.style.color = "#2e7d32";
+      msg.textContent = `✓ ${minutes > 0 ? "+" : ""}${minutes} min → ${who} (tot. ${res.total} min)`;
+    } else {
+      msg.style.color = "#b00"; msg.textContent = res.message || "Errore.";
+    }
+  } catch(e) {
+    msg.style.color = "#b00"; msg.textContent = "Errore: " + e.message;
+  }
+}
+
+let _resumeAllEnabled = false;
+
+async function doToggleResume() {
+  if (!currentEsame) return;
+  const newState = !_resumeAllEnabled;
+  const btn = document.getElementById("btn-resume-toggle");
+  btn.disabled = true;
+  try {
+    const res = await callScript({ action: "setResumeAll", password: adminPassword,
+                                   exam_id: currentEsame.exam_id, enabled: newState });
+    if (res.status === "ok") { _resumeAllEnabled = newState; updateResumeBar(); }
+    else alert(res.message || "Errore.");
+  } catch(e) { alert("Errore: " + e.message); }
+  finally { btn.disabled = false; }
+}
+
+function updateResumeBar() {
+  const badge   = document.getElementById("resume-status-badge");
+  const warning = document.getElementById("resume-warning");
+  const btn     = document.getElementById("btn-resume-toggle");
+  if (!badge) return;
+  if (_resumeAllEnabled) {
+    badge.textContent = "ON";
+    badge.style.background = "#c8e6c9"; badge.style.color = "#1b5e20";
+    if (warning) warning.style.display = "inline";
+    if (btn) btn.textContent = "Disabilita ripresa";
+  } else {
+    badge.textContent = "OFF";
+    badge.style.background = "#eee"; badge.style.color = "#888";
+    if (warning) warning.style.display = "none";
+    if (btn) btn.textContent = "Abilita ripresa";
+  }
+}
+
+// ---- TAB RISULTATI ----
+function updateRisultatiTab() {
+  const has = !!currentEsame;
+  document.getElementById("risultati-placeholder").style.display = !has ? "block" : "none";
+  document.getElementById("risultati-loading").style.display     = has  ? "block" : "none";
+  document.getElementById("risultati-content").style.display     = "none";
+  if (has) loadRisultatiData();
+}
+
+async function loadRisultatiData() {
+  if (!currentEsame) return;
+  const isFirstLoad = document.getElementById("risultati-content").style.display === "none";
+  if (isFirstLoad) {
+    document.getElementById("risultati-loading").style.display = "block";
+    document.getElementById("risultati-content").style.display = "none";
+  } else {
+    document.getElementById("risultati-updating").style.display = "inline";
+  }
+  try {
+    const res = await callScript({ action:"getResults", password:adminPassword, examId:currentEsame.exam_id });
+    if (res.status === "ok") {
+      renderRisultati(res);
+      ensureQuestionsLoaded(); // pre-fetch in background — pronto quando l'utente clicca uno studente
+    }
+    document.getElementById("risultati-loading").style.display  = "none";
+    document.getElementById("risultati-updating").style.display = "none";
+    document.getElementById("risultati-content").style.display  = "block";
+    document.getElementById("risultati-last-update").textContent = new Date().toLocaleTimeString("it-IT");
+  } catch(e) {
+    document.getElementById("risultati-updating").style.display = "none";
+    if (isFirstLoad) document.getElementById("risultati-loading").textContent = "Errore di caricamento.";
+    console.error("Risultati error:", e);
+  }
+}
+
+function renderRisultati(res) {
+  currentResultsData = res;
+  closeStudentDetail();
+  const track = res.track || {};
+  const rows  = res.rows  || [];
+  const nQ    = rows.length > 0 ? rows[0].pts.length : currentNQ;
+  currentNQ   = nQ; // aggiorna per il monitor
+
+  document.getElementById("risultati-meta").innerHTML =
+    "<code style='font-size:0.85em'>" + escHtml(track.exam_id || "—") + "</code>" +
+    (track.exam_date ? " &nbsp;|&nbsp; " + formatDateIt(track.exam_date) : "");
+
+  document.getElementById("res-stat-n").textContent = rows.length;
+  if (rows.length > 0) {
+    const scores = rows.map(r => Number(r.score) || 0).sort((a,b) => a-b);
+    const avg = scores.reduce((s,v) => s+v, 0) / scores.length;
+    const med = scores.length % 2 === 0
+      ? (scores[scores.length/2 - 1] + scores[scores.length/2]) / 2
+      : scores[Math.floor(scores.length/2)];
+    document.getElementById("res-stat-avg").textContent = avg.toFixed(1);
+    document.getElementById("res-stat-med").textContent = med % 1 === 0 ? med : med.toFixed(1);
+  } else {
+    document.getElementById("res-stat-avg").textContent = "—";
+    document.getElementById("res-stat-med").textContent = "—";
+  }
+
+  // Calcola totale punti dalla traccia (se disponibile)
+  const maxScore = rows.length > 0
+    ? rows[0].pts.reduce((s, _, qi) => s + Math.max(...rows.map(r => Number(r.pts[qi]) || 0)), 0)
+    : 30;
+
+  renderHistogram(rows, maxScore);
+
+  if (rows.length === 0) {
+    document.getElementById("res-thead").innerHTML = "";
+    document.getElementById("res-tbody").innerHTML =
+      '<tr><td colspan="3" style="text-align:center;padding:28px;color:#888;">Nessuno studente ha ancora consegnato.</td></tr>';
+    document.getElementById("res-tfoot").innerHTML = "";
+    return;
+  }
+
+  const maxPts = rows[0].pts.map((_, qi) => Math.max(...rows.map(r => Number(r.pts[qi]) || 0)));
+  const pctOk  = rows[0].pts.map((_, qi) => {
+    const mp = maxPts[qi]; if (mp === 0) return null;
+    return rows.filter(r => (Number(r.pts[qi]) || 0) >= mp).length / rows.length;
+  });
+
+  let thHtml = '<tr><th class="col-name">Studente</th><th>Inizio</th><th>Fine</th><th>Tempo</th>';
+  for (let q = 0; q < nQ; q++) {
+    const p = pctOk[q];
+    const cls = p === null ? "" : p >= 0.8 ? " hdr-easy" : p <= 0.2 ? " hdr-hard" : "";
+    thHtml += `<th class="${cls}" title="Dom. ${q+1}">${q+1}</th>`;
+  }
+  thHtml += '<th>Tot</th></tr>';
+  document.getElementById("res-thead").innerHTML = thHtml;
+
+  document.getElementById("res-tbody").innerHTML = rows.map((r, ri) => {
+    let cells = `<td class="col-name">${escHtml(String(r.nominativo || r.matricola))}</td>`;
+    cells += `<td style="font-size:0.82em;white-space:nowrap;color:#555;">${fmtTs(r.tsStart)}</td>`;
+    cells += `<td style="font-size:0.82em;white-space:nowrap;color:#555;">${fmtTs(r.tsEnd)}</td>`;
+    cells += `<td style="font-size:0.82em;white-space:nowrap;color:#555;">${escHtml(r.elapsed||"—")}</td>`;
+    for (let q = 0; q < nQ; q++) {
+      const pt = Number(r.pts[q]) || 0;
+      const mp = maxPts[q];
+      const cls = mp === 0 ? "cell-zero" : pt >= mp ? "cell-ok" : pt > 0 ? "" : "cell-zero";
+      cells += `<td class="${cls}">${pt > 0 ? pt : "·"}</td>`;
+    }
+    cells += `<td class="col-score">${Number(r.score) || 0}</td>`;
+    return `<tr class="res-row-click" onclick="showStudentDetail(${ri})" title="Clicca per dettaglio risposte">${cells}</tr>`;
+  }).join("");
+
+  let tfHtml = '<tr><td class="col-name">% corretto</td><td></td><td></td><td></td>';
+  for (let q = 0; q < nQ; q++) {
+    const p   = pctOk[q];
+    const cls = p === null ? "" : p >= 0.8 ? "cell-ok" : p <= 0.2 ? "cell-ko" : "";
+    const lbl = p === null ? "—" : Math.round(p * 100) + "%";
+    tfHtml += `<td class="${cls}">${lbl}</td>`;
+  }
+  tfHtml += "<td></td></tr>";
+  document.getElementById("res-tfoot").innerHTML = tfHtml;
+}
+
+// ---- DETTAGLIO RISPOSTE STUDENTE ----
+
+function letterToIndexAdmin(letter) {
+  const l = String(letter).toUpperCase().trim();
+  const idx = l.charCodeAt(0) - 65;
+  return idx >= 0 && idx < 26 ? idx : 0;
+}
+
+function formatAnswerHtml(q, ans) {
+  if (ans === "" || ans === null || ans === undefined) return '<span class="detail-ans-na">—</span>';
+  try {
+    if (q.tipo === "mc") {
+      const idx = parseInt(ans, 10);
+      const opts = Array.isArray(q.options) ? q.options : [];
+      const txt = (opts[idx] !== undefined) ? escHtml(String(opts[idx])) : escHtml(ans);
+      return `<span class="detail-ans">${txt}</span>`;
+    }
+    if (q.tipo === "fitb" || q.tipo === "free") {
+      const cls = q.tipo === "free" ? "detail-ans-free" : "detail-ans";
+      return `<span class="${cls}">${escHtml(String(ans))}</span>`;
+    }
+    if (q.tipo === "match") {
+      const given = typeof ans === "string" ? JSON.parse(ans) : ans;
+      const right = JSON.parse(q.corretta || "[]");
+      const left  = Array.isArray(q.options) ? q.options : [];
+      return given.map((gi, i) => {
+        let chosen;
+        const idx = parseInt(gi, 10);
+        if (!isNaN(idx) && idx >= 0 && idx < right.length) {
+          chosen = right[idx]; // formato reale: indice intero
+        } else if (typeof gi === "string" && gi !== "") {
+          chosen = gi;          // formato legacy/test: valore stringa diretto
+        } else {
+          chosen = "?";
+        }
+        return `<div>${escHtml(String(left[i] || i+1))} → ${escHtml(String(chosen))}</div>`;
+      }).join("");
+    }
+    if (q.tipo === "multi-fitb") {
+      const given = typeof ans === "string" ? JSON.parse(ans) : ans;
+      const d = typeof q.data === "string" ? JSON.parse(q.data || "{}") : (q.data || {});
+      const boxes = d.boxes || [];
+      return given.map((v, i) => {
+        const lbl = escHtml(String((boxes[i] && boxes[i].label) || (i+1)));
+        return `<div>${lbl}: ${escHtml(String(v ?? "—"))}</div>`;
+      }).join("");
+    }
+    if (q.tipo === "cloze") {
+      const given = typeof ans === "string" ? JSON.parse(ans) : ans;
+      const d = typeof q.data === "string" ? JSON.parse(q.data || "{}") : (q.data || {});
+      const dds = d.dropdowns || [];
+      return given.map((gi, i) => {
+        const opts = (dds[i] && dds[i].options) || [];
+        return `<div>Blank ${i+1}: ${escHtml(String(opts[gi] ?? gi))}</div>`;
+      }).join("");
+    }
+  } catch(e) {}
+  return `<span class="detail-ans">${escHtml(String(ans))}</span>`;
+}
+
+function formatCorrectHtml(q) {
+  if (q.tipo === "free") return '<span class="detail-ans-na">manuale</span>';
+  try {
+    if (q.tipo === "mc") {
+      const idx = letterToIndexAdmin(q.corretta);
+      const opts = Array.isArray(q.options) ? q.options : [];
+      return `<span class="detail-ans-ok">${escHtml(String(opts[idx] || q.corretta))}</span>`;
+    }
+    if (q.tipo === "fitb") {
+      return `<span class="detail-ans-ok">${escHtml(String(q.corretta))}</span>`;
+    }
+    if (q.tipo === "match") {
+      const right = JSON.parse(q.corretta || "[]");
+      const left  = Array.isArray(q.options) ? q.options : [];
+      return right.map((r, i) =>
+        `<div class="detail-ans-ok">${escHtml(String(left[i] || i+1))} → ${escHtml(String(r))}</div>`
+      ).join("");
+    }
+    if (q.tipo === "multi-fitb") {
+      const correct = JSON.parse(q.corretta || "[]");
+      const d = typeof q.data === "string" ? JSON.parse(q.data || "{}") : (q.data || {});
+      const boxes = d.boxes || [];
+      return correct.map((c, i) => {
+        const lbl = escHtml(String((boxes[i] && boxes[i].label) || (i+1)));
+        return `<div class="detail-ans-ok">${lbl}: ${escHtml(String(c))}</div>`;
+      }).join("");
+    }
+    if (q.tipo === "cloze") {
+      const d = typeof q.data === "string" ? JSON.parse(q.data || "{}") : (q.data || {});
+      const dds = d.dropdowns || [];
+      return dds.map((dd, i) => {
+        const c = dd.correct ?? 0;
+        return `<div class="detail-ans-ok">Blank ${i+1}: ${escHtml(String((dd.options || [])[c] ?? c))}</div>`;
+      }).join("");
+    }
+  } catch(e) {}
+  return `<span class="detail-ans-ok">${escHtml(String(q.corretta))}</span>`;
+}
+
+async function showStudentDetail(rowIdx) {
+  if (!currentResultsData) return;
+  const rows = currentResultsData.rows || [];
+  const r = rows[rowIdx];
+  if (!r) return;
+
+  // Evidenzia riga selezionata
+  document.querySelectorAll(".res-row-click").forEach((tr, i) => {
+    tr.classList.toggle("selected", i === rowIdx);
+  });
+  selectedDetailRow = rowIdx;
+
+  // Attende allQuestions — di norma già in memoria grazie al pre-fetch avviato da getResults
+  if (!allQuestions) {
+    document.getElementById("detail-tbody").innerHTML =
+      '<tr><td colspan="6" style="color:#888;font-style:italic;">Caricamento domande…</td></tr>';
+    document.getElementById("student-detail-card").style.display = "";
+    try {
+      await ensureQuestionsLoaded();
+    } catch(e) {
+      document.getElementById("detail-tbody").innerHTML =
+        `<tr><td colspan="6" style="color:#b00;">Errore caricamento domande: ${escHtml(e.message)}</td></tr>`;
+      return;
+    }
+  }
+
+  const qMap = Object.fromEntries(allQuestions.map(q => [q.id, q]));
+  const qids = Array.isArray(r.qids) ? r.qids : (r.qids ? String(r.qids).split(";")[0].split(",").map(x => x.trim()).filter(Boolean) : []);
+  const nome  = escHtml(String(r.nominativo || r.matricola));
+  const score = Number(r.score) || 0;
+  const totale = (currentResultsData.rows[0]?.pts || []).reduce((s, _, qi) =>
+    s + Math.max(...(currentResultsData.rows.map(row => Number(row.pts[qi]) || 0))), 0);
+
+  document.getElementById("detail-student-name").textContent = r.nominativo || r.matricola;
+  document.getElementById("detail-student-score").textContent =
+    `Matricola ${r.matricola}  ·  Punteggio: ${score} / ${totale || "?"}`;
+
+  const rows2 = qids.map((qid, qi) => {
+    const q   = qMap[qid];
+    const ans = r.answers ? r.answers[qi] : "";
+    const pt  = r.pts[qi] ?? 0;
+    const epPunti = r.qpunti?.[qi];
+    const maxPt = (epPunti !== null && epPunti !== undefined) ? epPunti : (q ? (q.punti || 1) : 1);
+    const isFree = q && q.tipo === "free";
+    const ptCls = isFree ? "" : (pt >= maxPt ? "detail-ans-ok" : pt > 0 ? "" : "detail-ans-ko");
+
+    if (!q) {
+      return `<tr>
+        <td class="col-n">${qi+1}</td>
+        <td class="col-tipo"><span class="detail-tipo-badge">?</span></td>
+        <td class="detail-q-text"><span style="color:#aaa;font-style:italic;">${escHtml(qid)} (non trovata)</span></td>
+        <td>—</td><td>—</td>
+        <td class="col-pt">${pt}</td>
+      </tr>`;
+    }
+    const testo = q.testo.length > 120 ? escHtml(q.testo.slice(0, 120)) + "…" : escHtml(q.testo);
+    return `<tr>
+      <td class="col-n">${qi+1}</td>
+      <td class="col-tipo"><span class="detail-tipo-badge">${escHtml(q.tipo)}</span></td>
+      <td class="detail-q-text" title="${escHtml(q.testo)}">${testo}</td>
+      <td class="detail-ans">${formatAnswerHtml(q, ans)}</td>
+      <td>${formatCorrectHtml(q)}</td>
+      <td class="col-pt ${ptCls}">${isFree ? pt+"*" : pt+"/"+maxPt}</td>
+    </tr>`;
+  });
+
+  if (qids.length === 0) {
+    const noQidMsg = r.qids === undefined
+      ? 'Il dettaglio domande non è disponibile: rideplova l\'Apps Script alla v2.13.0 per abilitare questa funzione.'
+      : 'Le domande assegnate a questo studente non sono registrate nel foglio risultati (campo QIDs vuoto).';
+    document.getElementById("detail-tbody").innerHTML =
+      `<tr><td colspan="6" style="color:#888;font-style:italic;padding:16px 8px;">${escHtml(noQidMsg)}</td></tr>`;
+  } else {
+    document.getElementById("detail-tbody").innerHTML = rows2.join("");
+  }
+
+  const card = document.getElementById("student-detail-card");
+  card.style.display = "";
+  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function closeStudentDetail() {
+  document.getElementById("student-detail-card").style.display = "none";
+  document.querySelectorAll(".res-row-click").forEach(tr => tr.classList.remove("selected"));
+  selectedDetailRow = -1;
+}
+
+function renderHistogram(rows, maxScore) {
+  const wrap = document.getElementById("histo-wrap");
+  if (rows.length === 0) { wrap.innerHTML = '<p style="color:#888;font-size:0.88em;">Nessun dato.</p>'; return; }
+  const counts = Array(maxScore + 1).fill(0);
+  rows.forEach(r => { const s = Math.min(Math.max(Math.round(Number(r.score) || 0), 0), maxScore); counts[s]++; });
+  const step = 2;
+  // Raggruppa per bin PRIMA di calcolare il massimo, altrimenti maxCount è sul singolo punteggio
+  // e le barre con bin > maxSingolo vengono clippate tutte a 100%
+  const bins = [];
+  for (let s = 0; s <= maxScore; s += step) {
+    bins.push({ s, cnt: counts[s] + (counts[s + 1] || 0) });
+  }
+  const maxCount = Math.max(...bins.map(b => b.cnt), 1);
+  let html = "";
+  bins.forEach(({ s, cnt }) => {
+    const pct = (cnt / maxCount) * 100;
+    const label = s + (s + 1 <= maxScore ? "–" + (s + 1) : "");
+    html += `<div class="histo-bar-row">
+      <span class="histo-label">${label}</span>
+      <div class="histo-bar-bg"><div class="histo-bar-fill" style="width:${pct.toFixed(1)}%"></div></div>
+      <span class="histo-count">${cnt > 0 ? cnt : ""}</span>
+    </div>`;
+  });
+  wrap.innerHTML = html;
+}
+
+// ============================================================
+// PREVIEW DOMANDA
+// ============================================================
+function previewQuestion(id, event) {
+  if (event) event.stopPropagation();
+  const q = allQuestions && allQuestions.find(x => x.id === id);
+  if (!q) return;
+
+  document.getElementById("preview-meta-top").textContent =
+    escHtml(q.categoria) + (q.sottocateg ? " › " + escHtml(q.sottocateg) : "") +
+    " · " + (({mc:"scelta multipla",fitb:"risposta libera",match:"corrispondenza",free:"testo libero","multi-fitb":"caselle multiple",cloze:"completamento"}[q.tipo] || q.tipo)) +
+    " · " + q.punti + " pt";
+
+  let body = `<div class="prev-text">${q.testo}</div>`;
+
+  if (q.tipo === "mc") {
+    const correct = String(q.corretta).toUpperCase().charCodeAt(0) - 65; // A=0, B=1, …
+    body += q.options.map((opt, i) => {
+      const letter = String.fromCharCode(65 + i); // A, B, C, D, E, …
+      return `<div class="prev-opt${i === correct ? " correct" : ""}">
+        <span class="prev-opt-label">${letter}</span>
+        <span>${escHtml(opt)}</span>
+        ${i === correct ? '<span style="margin-left:auto;color:#2e7d32;font-size:0.85em;">✓ corretta</span>' : ""}
+      </div>`;
+    }).join("");
+  } else if (q.tipo === "cloze") {
+    try {
+      const d = JSON.parse(q.data || "{}");
+      (d.dropdowns || []).forEach((dd, i) => {
+        body += `<div style="margin-bottom:10px;"><strong>{{${i}}}</strong>: `;
+        body += dd.options.map((opt, j) =>
+          `<span style="${j===dd.correct ? 'color:#2e7d32;font-weight:bold;' : 'color:#555;'}">${escHtml(opt)}</span>`
+        ).join(" &nbsp;·&nbsp; ");
+        body += `</div>`;
+      });
+    } catch(e) { body += "<p style='color:#b00;'>Dati cloze non leggibili</p>"; }
+  } else {
+    body += `<div style="font-size:0.85em;color:#777;margin-bottom:4px;">Risposta corretta:</div>
+             <div class="prev-fitb">${escHtml(q.corretta)}</div>`;
+    if (q.placeholder) body += `<div style="font-size:0.82em;color:#aaa;">Placeholder: ${escHtml(q.placeholder)}</div>`;
+  }
+
+  document.getElementById("preview-body").innerHTML = body;
+  const qs = q.stato || "verificato";
+  document.getElementById("preview-meta").innerHTML =
+    `ID: <code>${escHtml(q.id)}</code>` +
+    (q.tags ? ` &nbsp;·&nbsp; Tag: ${escHtml(q.tags)}` : "") +
+    ` &nbsp;·&nbsp; <span class="stato-badge stato-${qs}" style="cursor:pointer;" onclick="toggleStato('${q.id}')" title="Clicca per cambiare stato">${qs === "bozza" ? "✎ bozza" : "✓ verificato"}</span>`;
+
+  document.getElementById("preview-overlay").classList.add("open");
+}
+
+function closePreview(event) {
+  if (event && event.target !== document.getElementById("preview-overlay")) return;
+  document.getElementById("preview-overlay").classList.remove("open");
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.getElementById("preview-overlay").classList.remove("open");
+});
+
+// ============================================================
+// TAB: DOMANDE
+// ============================================================
+let allQuestions        = null;  // array caricato una volta sola
+let _allQuestionsPromise = null; // fetch in-flight — evita doppi round-trip
+let trackItems     = [];    // [{type:"fixed",id} | {type:"random",categoria,sottocateg,tag}]
+let isEditingItems = true;  // false = sola lettura (traccia chiusa)
+let questionStats  = null;  // {qid: {asked,correct,wrong,skipped}} caricato on-demand
+
+// Carica allQuestions una sola volta; le chiamate successive attendono la stessa promise.
+// Può essere invocata senza await per un pre-fetch in background.
+function ensureQuestionsLoaded() {
+  if (allQuestions) return Promise.resolve();
+  if (_allQuestionsPromise) return _allQuestionsPromise;
+  _allQuestionsPromise = callScript({ action: "getQuestions", password: adminPassword })
+    .then(res => {
+      if (res.status !== "ok") throw new Error(res.message || "getQuestions error");
+      allQuestions = res.questions || [];
+      buildCategoryFilters();
+    })
+    .finally(() => { _allQuestionsPromise = null; });
+  return _allQuestionsPromise;
+}
+
+async function loadQuestionStats() {
+  const btn = document.getElementById("btn-stats");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Caricamento…"; }
+  try {
+    const res = await callScript({ action: "getQuestionStats", password: adminPassword });
+    if (res.status !== "ok") throw new Error(res.message || "getQuestionStats error");
+    questionStats = res.stats || {};
+    renderQBrowser();
+    if (btn) { btn.textContent = "📊 Aggiorna statistiche"; btn.disabled = false; }
+  } catch(e) {
+    if (btn) { btn.textContent = "📊 Statistiche"; btn.disabled = false; }
+    showToast("Errore statistiche: " + e.message, "error");
+  }
+}
+
+// ---- INIT ----
+async function initDomandeTab() {
+  if (!allQuestions || !_tracksLoaded) {
+    document.getElementById("domande-loading").style.display = "block";
+    document.getElementById("domande-content").style.display = "none";
+    try {
+      await Promise.all([ensureQuestionsLoaded(), ensureTracksLoaded()]);
+    } catch(e) {
+      document.getElementById("domande-loading").textContent = "Errore: " + e.message;
+      return;
+    }
+  }
+  document.getElementById("domande-loading").style.display = "none";
+  document.getElementById("domande-content").style.display = "block";
+
+  // Se c'è un esame selezionato, pre-seleziona la sua traccia (se esiste)
+  if (currentEsame && currentEsame.traccia_id) {
+    const tracciaExists = allTracks.some(t => t.track_id === currentEsame.traccia_id);
+    if (tracciaExists) {
+      const sel = document.getElementById("traccia-select");
+      if (sel.value !== currentEsame.traccia_id) {
+        sel.value = currentEsame.traccia_id;
+        onTracciaChange(); // imposta currentTraccia e chiama updateDomandeTab
+        return;
+      }
+    }
+  }
+  updateDomandeTab();
+}
+
+function updateDomandeTab() {
+  if (!allQuestions) return;
+  const t = currentTraccia;
+  isEditingItems = true;
+  document.getElementById("browser-col").style.display     = "";
+  document.getElementById("actions-edit").style.display    = t ? "flex" : "none";
+  document.getElementById("btn-clear-items").style.display = t ? "" : "none";
+  // Mostra/nascondi form traccia
+  const selVal = document.getElementById("traccia-select").value;
+  document.getElementById("new-traccia-form").style.display  = selVal === "__new__" ? "block" : "none";
+  document.getElementById("edit-traccia-form").style.display = (t && selVal !== "__new__") ? "block" : "none";
+  if (t) {
+    document.getElementById("cfg-traccia-nome").value = t.nome || "";
+    // avviso modifica items se traccia già usata in esami
+    const esamiUsanti = allEsami.filter(e => e.traccia_id === t.track_id);
+    const warnEl = document.getElementById("items-esami-warn");
+    if (esamiUsanti.length > 0) {
+      const n = esamiUsanti.length;
+      warnEl.textContent = `⚠ Questa traccia è usata in ${n} esame${n > 1 ? "i" : ""}. Chi ha già iniziato conserva le proprie domande; nuovi accessi riceveranno le domande aggiornate.`;
+      warnEl.style.display = "";
+    } else {
+      warnEl.style.display = "none";
+    }
+    // mostra esami che usano questa traccia
+    const usati = allEsami.filter(e => e.traccia_id === t.track_id);
+    const infoEl = document.getElementById("traccia-esami-info");
+    if (usati.length === 0) {
+      infoEl.innerHTML = '<span style="font-style:italic;">Non ancora usata</span>';
+    } else {
+      const pills = usati.map(e => buildEsamePill(e)).join(" ");
+      infoEl.innerHTML = `<span>Usata in ${usati.length} esame${usati.length > 1 ? "i" : ""}: </span><span class="traccia-esami-inline">${pills}</span>`;
+    }
+    document.getElementById("save-items-msg").textContent = "";
+    trackItems = JSON.parse(JSON.stringify(t.items || []));
+  } else if (selVal !== "__new__") {
+    trackItems = [];
+  }
+  renderQBrowser();
+  renderItemsList();
+}
+
+// Alias per compatibilità (alcune chiamate usano setDomandeMode)
+function setDomandeMode(mode, keepItems = false) {
+  if (!keepItems) trackItems = [];
+  updateDomandeTab();
+}
+
+function duplicateEsame() {
+  if (!currentEsame) return;
+  const traccia_id = currentEsame.traccia_id || "";
+  currentEsame = null;
+  document.getElementById("esame-select").value  = "";
+  document.getElementById("new-corso").value     = "";
+  document.getElementById("new-date").value      = "";
+  document.getElementById("new-dur").value       = "90";
+  document.getElementById("new-mode").value      = "exam";
+  document.getElementById("new-pwd").value       = "";
+  document.getElementById("new-traccia-ref").value = traccia_id;
+  updateAdminTab();
+}
+
+// Rimuove campi interni (_count ecc.) che non devono essere salvati nel foglio
+function cleanItemsForSave(items) {
+  return items.map(item => { const { _count, ...clean } = item; return clean; });
+}
+
+async function saveTrackItems() {
+  if (!currentTraccia) { alert("Seleziona una traccia prima di salvare."); return; }
+  const msg = document.getElementById("save-items-msg");
+  msg.style.color = "#555"; msg.textContent = "Salvataggio…";
+  try {
+    const res = await callScript({
+      action: "setTrack", password: adminPassword,
+      track_id: currentTraccia.track_id, items: cleanItemsForSave(trackItems)
+    });
+    if (res.status !== "ok") throw new Error(res.message);
+    currentTraccia.items = JSON.parse(JSON.stringify(trackItems));
+    const idx = allTracks.findIndex(t => t.track_id === currentTraccia.track_id);
+    if (idx >= 0) allTracks[idx] = { ...allTracks[idx], items: currentTraccia.items };
+    msg.style.color = "#2e7d32"; msg.textContent = "✓ Salvato";
+  } catch(e) {
+    msg.style.color = "#b00"; msg.textContent = "Errore: " + e.message;
+  }
+}
+
+// ---- CROSSREF TRACCE → ESAMI ----
+let crossrefOpen = true;
+
+function toggleCrossref() {
+  crossrefOpen = !crossrefOpen;
+  document.getElementById("crossref-body").style.display = crossrefOpen ? "" : "none";
+  document.getElementById("crossref-toggle").textContent = crossrefOpen ? "▲" : "▼";
+}
+
+function renderCrossref() {
+  const body = document.getElementById("crossref-body");
+  if (!body) return;
+  if (allTracks.length === 0) {
+    body.innerHTML = '<p style="color:#aaa;font-size:0.85em;font-style:italic;padding:4px 0 0;">Nessuna traccia presente.</p>';
+    return;
+  }
+  let html = '<table><thead><tr><th style="width:32%">Traccia</th><th>Esami che la usano</th></tr></thead><tbody>';
+  allTracks.forEach(t => {
+    const esami = allEsami.filter(e => e.traccia_id === t.track_id);
+    const esamiHtml = esami.length === 0
+      ? '<span style="color:#bbb;font-style:italic;">nessun esame</span>'
+      : esami.map(e => buildEsamePill(e)).join("");
+    html += `<tr>
+      <td>
+        <div class="tr-nome">${escHtml(t.nome || t.track_id)}</div>
+        <div class="tr-id">${escHtml(t.track_id)}</div>
+      </td>
+      <td>${esamiHtml}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+function buildEsamePill(e) {
+  const stato    = e.stato    || e.status   || "closed";
+  const modalita = e.modalita || e.mode     || "exam";
+  const data     = e.data     || e.exam_date || "";
+  const examId   = e.exam_id  || "—";
+  const isOpen   = stato === "open";
+  const dot      = isOpen ? "●" : "○";
+  const modeStr  = modalita === "practice" ? "eserc." : "esame";
+  const dataStr  = data ? ` ${data},` : "";
+  const label    = `${escHtml(examId)} <span style="color:#aaa">(${dataStr} ${modeStr})</span>`;
+  return `<span class="esame-pill ${isOpen ? 'open' : 'closed'}" onclick="jumpToEsame('${escHtml(e.exam_id)}')" title="${escHtml(e.exam_id)}"><span class="pill-dot">${dot}</span>${label}</span>`;
+}
+
+function jumpToEsame(examId) {
+  switchTab("admin");
+  const sel = document.getElementById("esame-select");
+  if (sel) {
+    sel.value = examId;
+    onEsameChange();
+  }
+}
+
+function onTracciaChange() {
+  const val = document.getElementById("traccia-select").value;
+  if (val === "__new__") {
+    currentTraccia = null;
+    trackItems = [];
+    document.getElementById("new-traccia-form").style.display  = "block";
+    document.getElementById("edit-traccia-form").style.display = "none";
+    document.getElementById("traccia-esami-info").textContent  = "";
+    renderItemsList(); renderQBrowser();
+  } else if (val) {
+    currentTraccia = allTracks.find(t => t.track_id === val) || null;
+    document.getElementById("new-traccia-form").style.display  = "none";
+    updateDomandeTab();
+  } else {
+    currentTraccia = null;
+    trackItems = [];
+    document.getElementById("new-traccia-form").style.display  = "none";
+    document.getElementById("edit-traccia-form").style.display = "none";
+    document.getElementById("traccia-esami-info").textContent  = "";
+    document.getElementById("items-esami-warn").style.display  = "none";
+    renderItemsList(); renderQBrowser();
+  }
+}
+
+async function saveTracciaNome() {
+  if (!currentTraccia) return;
+  const msg = document.getElementById("save-traccia-nome-msg");
+  const nome = document.getElementById("cfg-traccia-nome").value.trim();
+  msg.style.color="#555"; msg.textContent="Salvataggio…";
+  try {
+    const res = await callScript({ action:"setTrack", password:adminPassword, track_id:currentTraccia.track_id, nome });
+    if (res.status !== "ok") throw new Error(res.message);
+    currentTraccia.nome = nome;
+    const idx = allTracks.findIndex(t => t.track_id === currentTraccia.track_id);
+    if (idx >= 0) allTracks[idx].nome = nome;
+    populateTracciaSelects();
+    document.getElementById("traccia-select").value = currentTraccia.track_id;
+    msg.style.color="#2e7d32"; msg.textContent="✓ Salvato";
+  } catch(e) { msg.style.color="#b00"; msg.textContent="Errore: "+e.message; }
+}
+
+async function doCreateTraccia() {
+  const nome = document.getElementById("new-traccia-nome").value.trim();
+  const msg  = document.getElementById("create-traccia-msg");
+  if (!nome) { msg.style.color="#b00"; msg.textContent="Inserisci un nome."; return; }
+  msg.style.color="#555"; msg.textContent="Creazione…";
+  try {
+    const res = await callScript({ action:"createTrack", password:adminPassword, nome, items:cleanItemsForSave(trackItems) });
+    if (res.status !== "ok") throw new Error(res.message);
+    const newT = { track_id: res.track_id, nome, items: cleanItemsForSave(trackItems) };
+    allTracks.push(newT);
+    currentTraccia = newT;
+    document.getElementById("new-traccia-nome").value = "";
+    populateTracciaSelects();
+    document.getElementById("traccia-select").value = res.track_id;
+    trackItems = JSON.parse(JSON.stringify(newT.items));
+    updateDomandeTab();
+    renderCrossref();
+    msg.style.color="#2e7d32"; msg.textContent="✓ Traccia creata: " + res.track_id;
+  } catch(e) { msg.style.color="#b00"; msg.textContent="Errore: "+e.message; }
+}
+
+// ---- FILTRI BROWSER ----
+function buildCategoryFilters() {
+  const cats = [...new Set(allQuestions.map(q => q.categoria).filter(Boolean))].sort();
+  const catSel = document.getElementById("f-cat");
+  catSel.innerHTML = '<option value="">— tutte —</option>';
+  cats.forEach(c => { const o = document.createElement("option"); o.value = c; o.textContent = c; catSel.appendChild(o); });
+
+  const tags = [...new Set(allQuestions.flatMap(q =>
+    (q.tags || "").split(",").map(t => t.trim()).filter(Boolean)
+  ))].sort();
+  const tagSel = document.getElementById("f-tag");
+  tagSel.innerHTML = '<option value="">— tutti —</option>';
+  tags.forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; tagSel.appendChild(o); });
+
+  const pts = [...new Set(allQuestions.map(q => q.punti).filter(v => v != null))].sort((a,b) => a-b);
+  const ptsSel = document.getElementById("f-pts");
+  ptsSel.innerHTML = '<option value="">— tutti —</option>';
+  pts.forEach(p => { const o = document.createElement("option"); o.value = p; o.textContent = p + " pt"; ptsSel.appendChild(o); });
+}
+
+function updateSubcatFilter() {
+  const cat = document.getElementById("f-cat").value;
+  const subcats = [...new Set(
+    allQuestions.filter(q => !cat || q.categoria === cat).map(q => q.sottocateg).filter(Boolean)
+  )].sort();
+  const subSel = document.getElementById("f-subcat");
+  subSel.innerHTML = '<option value="">— tutte —</option>';
+  subcats.forEach(s => { const o = document.createElement("option"); o.value = s; o.textContent = s; subSel.appendChild(o); });
+}
+
+function onCatChange()     { updateSubcatFilter(); renderQBrowser(); }
+function filterQuestions() { renderQBrowser(); }
+
+async function toggleStato(id) {
+  const q = allQuestions && allQuestions.find(x => x.id === id);
+  if (!q) return;
+  const nuovoStato = (q.stato || "verificato") === "bozza" ? "verificato" : "bozza";
+  try {
+    const res = await callScript({ action: "setQuestionStato", password: adminPassword, id, stato: nuovoStato });
+    if (res.status === "ok") {
+      q.stato = nuovoStato;
+      renderQBrowser();
+      // aggiorna anche il badge nel preview se aperto
+      const overlay = document.getElementById("preview-overlay");
+      if (overlay.classList.contains("open")) previewQuestion(id, null);
+    } else {
+      alert("Errore: " + res.message);
+    }
+  } catch(e) {
+    alert("Errore di rete: " + e.message);
+  }
+}
+
+function setFiltersFromItem(item) {
+  if (!allQuestions) return;
+  let cat = "", subcat = "", tag = "";
+  if (item.type === "fixed") {
+    const qMap = Object.fromEntries(allQuestions.map(q => [q.id, q]));
+    const q = qMap[item.id];
+    if (!q) return;
+    cat    = q.categoria   || "";
+    subcat = q.sottocateg  || "";
+    tag    = q.tags ? q.tags.split(",")[0].trim() : "";
+  } else {
+    cat    = item.categoria  || "";
+    subcat = item.sottocateg || "";
+    tag    = item.tag        || "";
+  }
+  document.getElementById("f-cat").value = cat;
+  updateSubcatFilter();
+  document.getElementById("f-subcat").value = subcat;
+  document.getElementById("f-tag").value = tag;
+  document.getElementById("f-pts").value = "";
+  renderQBrowser();
+  document.getElementById("browser-col").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// ---- BROWSER DOMANDE ----
+function statBadgeHtml(qid) {
+  if (!questionStats) return "";
+  const s = questionStats[qid];
+  if (!s || s.asked === 0) return `<span class="stat-badge stat-never" title="Mai usata">—</span>`;
+  const pct = Math.round(s.correct / s.asked * 100);
+  const cls = pct >= 70 ? "stat-easy" : pct >= 30 ? "stat-med" : "stat-hard";
+  return `<span class="stat-badge ${cls}" title="Chiesta ${s.asked}x: ${s.correct} corrette, ${s.wrong} errate, ${s.skipped} saltate">${pct}%</span>`;
+}
+
+function renderQBrowser() {
+  const cat    = document.getElementById("f-cat").value;
+  const subcat = document.getElementById("f-subcat").value;
+  const tag    = document.getElementById("f-tag").value;
+  const pts    = document.getElementById("f-pts").value;
+  const stato  = document.getElementById("f-stato").value;
+  const filtered = allQuestions.filter(q => {
+    if (cat    && q.categoria  !== cat)    return false;
+    if (subcat && q.sottocateg !== subcat) return false;
+    if (tag) {
+      const qTags = (q.tags || "").split(",").map(t => t.trim());
+      if (!qTags.includes(tag)) return false;
+    }
+    if (pts !== "" && String(q.punti) !== pts) return false;
+    if (stato && (q.stato || "verificato") !== stato) return false;
+    return true;
+  });
+
+  document.getElementById("q-loading").style.display = "none";
+  document.getElementById("q-browser").style.display = "block";
+  document.getElementById("q-count").textContent = filtered.length + " domande trovate";
+
+  const browser = document.getElementById("q-browser");
+  if (filtered.length === 0) {
+    browser.innerHTML = '<div style="padding:16px;color:#aaa;font-size:0.85em;font-style:italic;">Nessuna domanda.</div>';
+    return;
+  }
+
+  const usedIds = new Set(trackItems.filter(i => i.type === "fixed").map(i => i.id));
+
+  browser.innerHTML = filtered.map(q => {
+    const shortText = q.testo.length > 110 ? q.testo.substring(0, 110) + "…" : q.testo;
+    const qs = q.stato || "verificato";
+    const statoLabel = qs === "bozza" ? "✎ bozza" : "✓";
+    const isUsed = usedIds.has(q.id);
+    const addBtn = isUsed
+      ? `<button class="add-btn" disabled title="Già nella traccia">←</button>`
+      : `<button class="add-btn" onclick="event.stopPropagation();addFixedItem('${q.id}')" title="Aggiungi alla traccia">←</button>`;
+    return `<div class="q-row${isUsed ? ' used' : ''}" onclick="previewQuestion('${q.id}',event)">
+      ${addBtn}
+      <div class="q-row-body">
+        <div>${escHtml(shortText)}</div>
+        <div class="q-row-meta">
+          ${escHtml(q.categoria)}${q.sottocateg ? " › " + escHtml(q.sottocateg) : ""} &nbsp;·&nbsp; ${({mc:"scelta multipla",fitb:"risposta libera",match:"corrispondenza",free:"testo libero","multi-fitb":"caselle multiple",cloze:"completamento"}[q.tipo] || q.tipo)}
+          ${(q.tags || "").split(",").map(t => t.trim()).filter(Boolean).map(t => `<span class="tag-chip">${escHtml(t)}</span>`).join("")}
+        </div>
+      </div>
+      <div class="q-row-pts">${q.punti} pt</div>
+      ${statBadgeHtml(q.id)}
+      <span class="stato-badge stato-${qs}" onclick="event.stopPropagation();toggleStato('${q.id}')" title="Clicca per cambiare stato">${statoLabel}</span>
+    </div>`;
+  }).join("");
+}
+
+// ---- ITEMS LIST ----
+function addFixedItem(id) {
+  if (!isEditingItems) return;
+  trackItems.push({ type: "fixed", id });
+  renderItemsList();
+  renderQBrowser();
+}
+
+function addRandomItem() {
+  if (!isEditingItems) return;
+  const categoria  = document.getElementById("f-cat").value;
+  const sottocateg = document.getElementById("f-subcat").value;
+  const tag        = document.getElementById("f-tag").value;
+  const ptsVal     = document.getElementById("f-pts").value;
+  const punti      = ptsVal !== "" ? Number(ptsVal) : undefined;
+  const count = (allQuestions || []).filter(q => {
+    if (categoria  && q.categoria  !== categoria)  return false;
+    if (sottocateg && q.sottocateg !== sottocateg) return false;
+    if (tag) {
+      const qTags = (q.tags || "").split(",").map(t => t.trim());
+      if (!qTags.includes(tag)) return false;
+    }
+    if (punti !== undefined && q.punti !== punti) return false;
+    return true;
+  }).length;
+  const item = { type: "random" };
+  if (categoria)          item.categoria  = categoria;
+  if (sottocateg)         item.sottocateg = sottocateg;
+  if (tag)                item.tag        = tag;
+  if (punti !== undefined) item.punti     = punti;
+  item._count = count; // solo per display locale, mai salvato
+  trackItems.push(item);
+  renderItemsList();
+}
+
+function setItemPunti(idx, val, defaultPunti) {
+  const v = parseFloat(val);
+  if (!isNaN(v) && v > 0 && v !== defaultPunti) trackItems[idx].punti = v;
+  else delete trackItems[idx].punti;
+  renderItemsList();
+}
+
+function setItemPuntiRandom(idx, val) {
+  const v = parseFloat(val);
+  if (!isNaN(v) && v > 0) trackItems[idx].punti = v;
+  else delete trackItems[idx].punti;
+  renderItemsList();
+}
+
+function removeItem(idx) {
+  trackItems.splice(idx, 1);
+  renderItemsList();
+  renderQBrowser();
+}
+
+function moveItem(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= trackItems.length) return;
+  [trackItems[idx], trackItems[newIdx]] = [trackItems[newIdx], trackItems[idx]];
+  renderItemsList();
+}
+
+
+function getRandomMatches(item) {
+  if (!allQuestions) return [];
+  return allQuestions.filter(q => {
+    if (item.categoria && q.categoria !== item.categoria) return false;
+    if (item.sottocateg && q.sottocateg !== item.sottocateg) return false;
+    if (item.tag) {
+      const qTags = (q.tags || "").split(",").map(t => t.trim());
+      if (!qTags.includes(item.tag)) return false;
+    }
+    if (item.punti !== undefined && q.punti !== item.punti) return false;
+    return true;
+  });
+}
+
+function renderItemsList() {
+  const container = document.getElementById("items-list");
+  const countEl   = document.getElementById("items-count");
+
+  if (trackItems.length === 0) {
+    container.innerHTML = '<div style="padding:16px;color:#aaa;font-size:0.85em;font-style:italic;">Nessuno slot. Clicca una domanda nel browser o usa "+ Casuale".</div>';
+    countEl.textContent = "0 slot — 0 pt";
+    return;
+  }
+
+  const qMap = allQuestions ? Object.fromEntries(allQuestions.map(q => [q.id, q])) : {};
+
+  let totalPt = 0;
+  const rows = trackItems.map((item, i) => {
+    const arrows = isEditingItems ? `<div class="sel-arrows">
+      <button onclick="moveItem(${i},-1)" ${i === 0 ? "disabled" : ""}>▲</button>
+      <button onclick="moveItem(${i}, 1)" ${i === trackItems.length - 1 ? "disabled" : ""}>▼</button>
+    </div>
+    <button class="sel-remove" onclick="removeItem(${i})">✕</button>` : "";
+
+    if (item.type === "fixed") {
+      const q = qMap[item.id];
+      if (!q) return `<div class="sel-row"><span class="sel-num">${i+1}.</span><span class="sel-text" style="color:#b00;">ID non trovato: ${escHtml(item.id)}</span>${arrows}</div>`;
+      const ep = item.punti !== undefined ? item.punti : q.punti;
+      totalPt += ep;
+      const shortText = q.testo.length > 90 ? q.testo.substring(0, 90) + "…" : q.testo;
+      const ptsOverride = item.punti !== undefined && item.punti !== q.punti;
+      return `<div class="sel-row" style="cursor:pointer;" onclick="previewQuestion('${item.id}',event)" title="Anteprima">
+        <span class="sel-num">${i+1}.</span>
+        <span class="sel-text">${escHtml(shortText)}</span>
+        <span class="sel-pts" style="${ptsOverride ? 'color:#b06000;font-weight:600;' : ''}" title="default domanda: ${q.punti} pt">
+          <input type="number" min="0.5" step="0.5" style="width:44px;font-size:0.85em;text-align:right;border:1px solid #ccc;padding:1px 3px;background:transparent;"
+            value="${ep}" onclick="event.stopPropagation()"
+            onchange="setItemPunti(${i},this.value,${q.punti})"> pt</span>
+        <button class="prev-btn" onclick="event.stopPropagation();setFiltersFromItem(trackItems[${i}])" title="Mostra origine nel database">🔍</button>
+        ${arrows}
+      </div>`;
+    } else {
+      // slot casuale — mostra il riepilogo dei filtri in sola lettura
+      const parts = [];
+      if (item.categoria)  parts.push("cat: " + item.categoria);
+      if (item.sottocateg) parts.push("subcat: " + item.sottocateg);
+      if (item.tag)        parts.push("tag: " + item.tag);
+      if (item.punti !== undefined) parts.push("pt: " + item.punti);
+      const desc    = parts.length ? parts.join(" · ") : "qualsiasi";
+      const matches = getRandomMatches(item);
+      const count   = matches.length;
+      const countStr = count + " disponibili";
+      const uniquePts = [...new Set(matches.map(q => q.punti))];
+      let inferredPts = null;
+      let ptsWarning  = "";
+      if (count > 0 && item.punti === undefined) {
+        if (uniquePts.length === 1) {
+          inferredPts = uniquePts[0];
+        } else if (uniquePts.length > 1) {
+          inferredPts = Math.max(...uniquePts);
+          ptsWarning  = ` title="Pool eterogeneo — imposta un punteggio esplicito"`;
+        }
+      }
+      const effectivePts = item.punti !== undefined ? item.punti : inferredPts;
+      totalPt += effectivePts || 0;
+      const ptsInput = isEditingItems
+        ? `<span class="sel-pts" style="${item.punti === undefined && uniquePts.length > 1 ? 'color:#b06000;font-weight:600;' : ''}">
+            <input type="number" min="0.5" step="0.5" style="width:44px;font-size:0.85em;text-align:right;border:1px solid #ccc;padding:1px 3px;background:transparent;"
+              value="${effectivePts !== null ? effectivePts : ''}" placeholder="pt"
+              onclick="event.stopPropagation()"
+              onchange="setItemPuntiRandom(${i},this.value)"> pt${item.punti === undefined && uniquePts.length > 1 ? ' ⚠' : ''}</span>`
+        : `<span class="sel-pts"${ptsWarning}>${effectivePts !== null ? effectivePts + ' pt' : '— pt'}${item.punti === undefined && uniquePts.length > 1 ? ' ⚠' : ''}</span>`;
+      return `<div class="sel-row" style="background:#fffbf0;cursor:pointer;" onclick="setFiltersFromItem(trackItems[${i}])" title="Filtra nel database">
+        <span class="sel-num">${i+1}.</span>
+        <span class="sel-text" style="font-style:italic;color:#7b5e00;">🎲 ${escHtml(desc)}</span>
+        <span class="sel-pts rule-count${count===0?" zero":""}">${countStr}</span>
+        ${ptsInput}
+        ${arrows}
+      </div>`;
+    }
+  }).join("");
+
+  container.innerHTML = rows;
+  countEl.textContent = trackItems.length + " slot — " + totalPt + " pt";
+}
+
+function clearItems() {
+  if (!isEditingItems) return;
+  trackItems = [];
+  renderItemsList();
+  renderQBrowser();
+}
+
+// ---- CREA ESAME ----
+async function doCreateEsame() {
+  const tracciaId = document.getElementById("new-traccia-ref").value;
+  const corso = document.getElementById("new-corso").value.trim();
+  const date  = document.getElementById("new-date").value;
+  const dur   = document.getElementById("new-dur").value;
+  const mode  = document.getElementById("new-mode").value;
+  const pwd   = document.getElementById("new-pwd").value.trim();
+  const msg   = document.getElementById("create-msg");
+
+  if (!tracciaId) { msg.style.color="#b00"; msg.textContent="Seleziona una traccia."; return; }
+  if (!date)      { msg.style.color="#b00"; msg.textContent="Seleziona una data."; return; }
+
+  msg.style.color="#555"; msg.textContent="Creazione in corso…";
+  try {
+    const shuffle = document.getElementById("new-shuffle").value;
+    const res = await callScript({
+      action:"createEsame", password:adminPassword,
+      traccia_id:tracciaId, corso, exam_date:date,
+      duration:dur, mode, track_password:pwd, shuffle
+    });
+    if (res.status !== "ok") throw new Error(res.message);
+
+    const newE = { exam_id:res.exam_id, traccia_id:tracciaId, corso,
+                   exam_date:date, duration:dur, mode, status:"closed", password:pwd };
+    allEsami.push(newE);
+    populateEsameSelect(allEsami);
+    renderCrossref();
+    document.getElementById("esame-select").value = res.exam_id;
+    currentEsame = newE;
+    msg.style.color="#2e7d32"; msg.textContent="✓ Esame creato: " + res.exam_id;
+    updateAdminTab();
+  } catch(e) { msg.style.color="#b00"; msg.textContent="Errore: "+e.message; }
+}
+</script>
+</body>
+</html>
