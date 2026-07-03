@@ -61,8 +61,17 @@
   .btn:disabled { background: #ccc; cursor: not-allowed; }
 
   #msg-error  { color: #b00; font-size: 0.88em; margin-top: 14px; min-height: 1.2em; }
-  #msg-status { color: #888; font-size: 0.88em; margin-top: 14px; }
   #msg-empty  { color: #888; font-size: 0.88em; margin-top: 18px; display: none; }
+
+  #loading-state { text-align: center; padding: 24px 0 8px; }
+  #loading-state .spinner {
+    width: 28px; height: 28px; margin: 0 auto 14px;
+    border: 3px solid #ddd; border-top-color: #1a1a1a;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  #loading-state p { color: #888; font-size: 0.9em; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #form-content { display: none; }
 
   @media (max-width: 540px) {
     .card { margin: 24px 12px; padding: 28px 20px; }
@@ -79,30 +88,36 @@
   <p class="card-title">Accedi all'esame</p>
   <p class="card-lead">Seleziona il corso, poi scegli un'esercitazione o un esame tra quelli disponibili.</p>
 
-  <label class="field-label" for="sel-corso">Corso</label>
-  <select id="sel-corso" onchange="onCorsoChange()">
-    <option value="">— seleziona un corso —</option>
-  </select>
-
-  <div class="divider"></div>
-
-  <label class="field-label" for="sel-esercitazioni">Esercitazioni</label>
-  <select id="sel-esercitazioni" disabled onchange="onExamSelect('practice')">
-    <option value="">— seleziona esercitazione —</option>
-  </select>
-
-  <label class="field-label" for="sel-esami">Esami</label>
-  <select id="sel-esami" disabled onchange="onExamSelect('exam')">
-    <option value="">— seleziona esame —</option>
-  </select>
-
-  <div>
-    <button class="btn" id="btn-vai" disabled onclick="goToExam()">Accedi &#8594;</button>
+  <div id="loading-state">
+    <div class="spinner"></div>
+    <p>Caricamento esami in corso&hellip;</p>
   </div>
 
-  <div id="msg-error"></div>
-  <div id="msg-status">Caricamento esami in corso&#8230;</div>
-  <div id="msg-empty">Nessun esame disponibile al momento.</div>
+  <div id="form-content">
+    <label class="field-label" for="sel-corso">Corso</label>
+    <select id="sel-corso" onchange="onCorsoChange()">
+      <option value="">— seleziona un corso —</option>
+    </select>
+
+    <div class="divider"></div>
+
+    <label class="field-label" for="sel-esercitazioni">Esercitazioni</label>
+    <select id="sel-esercitazioni" disabled onchange="onExamSelect('practice')">
+      <option value="">— seleziona esercitazione —</option>
+    </select>
+
+    <label class="field-label" for="sel-esami">Esami</label>
+    <select id="sel-esami" disabled onchange="onExamSelect('exam')">
+      <option value="">— seleziona esame —</option>
+    </select>
+
+    <div>
+      <button class="btn" id="btn-vai" disabled onclick="goToExam()">Accedi &#8594;</button>
+    </div>
+
+    <div id="msg-error"></div>
+    <div id="msg-empty">Nessun esame disponibile al momento.</div>
+  </div>
 </div>
 
 <script>
@@ -140,16 +155,18 @@ function examLabel(e) {
 async function loadExams() {
   try {
     const res = await callScript({ action: "getPublicExams" });
-    document.getElementById("msg-status").textContent = "";
     if (res.status !== "ok") throw new Error(res.message || "errore server");
     allExams = res.exams || [];
+    document.getElementById("loading-state").style.display = "none";
+    document.getElementById("form-content").style.display = "block";
     if (allExams.length === 0) {
       document.getElementById("msg-empty").style.display = "block";
       return;
     }
     populateCorso();
   } catch(e) {
-    document.getElementById("msg-status").textContent = "";
+    document.getElementById("loading-state").style.display = "none";
+    document.getElementById("form-content").style.display = "block";
     document.getElementById("msg-error").textContent =
       "Impossibile caricare gli esami. Controlla la connessione e riprova.";
   }
