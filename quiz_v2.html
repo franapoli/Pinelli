@@ -48,6 +48,8 @@
   #progress-bar-wrap { background: #eee; height: 4px; margin-bottom: 28px; }
   #progress-bar { background: #1a1a1a; height: 4px; transition: width 0.3s; }
   .q-number { font-size: 0.82em; color: #777; margin-bottom: 6px; }
+  .q-id { font-size: 0.72em; color: #999; margin-left: 10px; font-family: monospace; user-select: all; }
+  @media print { .q-id { color: #666; } }
   .q-points { font-size: 0.82em; color: #777; margin-left: 8px; }
   .q-text { font-size: 1.05em; line-height: 1.65; margin-bottom: 22px; }
 
@@ -91,6 +93,12 @@
   .multi-fitb-box { display:flex; flex-direction:column; gap:4px; }
   .multi-fitb-label { font-size:0.82em; color:#555; font-weight:bold; }
   .multi-fitb-input { padding:8px 10px; border:1px solid #bbb; font-family:monospace; font-size:0.95em; }
+  /* MULTI-FITB table mode */
+  .dp-table { border-collapse:collapse; margin:12px 0; font-family:monospace; }
+  .dp-table th, .dp-table td { border:1px solid #bbb; padding:6px 10px; text-align:center; min-width:2.5em; }
+  .dp-table th { background:#f5f5f0; font-weight:bold; }
+  .dp-table td.static { color:#444; }
+  .multi-fitb-table-input { width:3em; text-align:center; padding:4px 6px; border:1px solid #1a1a1a; font-family:monospace; font-size:0.95em; background:#fffbe6; }
   .nav { display: flex; justify-content: space-between; margin-top: 28px; }
 
 
@@ -326,7 +334,11 @@ async function loadTrack() {
     const durLabel = EXAM_DURATION_MIN === 0 ? "senza limite di tempo" : EXAM_DURATION_MIN + " minuti";
     const titleParts = ["Quiz"];
     if (t.corso) titleParts.push(t.corso);
-    if (EXAM_DATE) titleParts.push(formatDateIt(EXAM_DATE));
+    if (EXAM_MODE === "practice" && t.track_name) {
+      titleParts.push(t.track_name);
+    } else if (EXAM_DATE) {
+      titleParts.push(formatDateIt(EXAM_DATE));
+    }
     document.getElementById("cover-title").textContent = titleParts.join(" — ");
     document.title = titleParts.join(" — ");
     document.getElementById("cover-subtitle").innerHTML =
@@ -741,10 +753,13 @@ function renderQuestion() {
   document.getElementById("progress-bar").style.width = (((current + 1) / total) * 100) + "%";
 
   let html = "<div class='q-number'>Domanda " + (q.pos || current + 1) +
-             " <span class='q-points'>[" + q.pts + " pt]</span></div>";
+             " <span class='q-points'>[" + q.pts + " pt]</span>" +
+             (q.id ? "<span class='q-id'>" + q.id + "</span>" : "") + "</div>";
 
-  // Il testo domanda viene reso come innerHTML (per cloze è incluso nel rendering dei dropdown)
-  if (q.type !== "cloze") html += "<div class='q-text'>" + q.text + "</div>";
+  // Il testo domanda viene reso come innerHTML
+  // cloze e multi-fitb con tabella ({{N}}) gestiscono il testo internamente
+  const isTableFitb = q.type === "multi-fitb" && /\{\{\d+\}\}/.test(q.text || "");
+  if (q.type !== "cloze" && !isTableFitb) html += "<div class='q-text'>" + q.text + "</div>";
 
   if (q.type === "mc") {
     const order = (shuffleMap && shuffleMap[current]) ? shuffleMap[current] : q.options.map((_, i) => i);
@@ -867,8 +882,23 @@ function renderMultiFitbQuestion(q) {
   if (!q.boxes || q.boxes.length === 0) return "<p style='color:#b00;font-size:0.9em;'>Errore: configurazione caselle mancante (aggiornare il deploy dello script).</p>";
   if (!Array.isArray(answers[current])) answers[current] = new Array(q.boxes.length).fill("");
   const ans  = answers[current];
-  const cols = q.cols || 1;
   const ptsList = q.boxes.map(b => b.pts || 0);
+
+  // Modalità tabella: {{N}} nel testo → input inline dentro la tabella HTML
+  if (q.text && /\{\{\d+\}\}/.test(q.text)) {
+    let inner = q.text.replace(/\{\{(\d+)\}\}/g, (_, idx) => {
+      const i = parseInt(idx);
+      return "<input class='multi-fitb-table-input' type='text' " +
+        "value='" + escHtml(String(ans[i] || "")) + "' " +
+        "oninput='saveMultiFitbBox(" + i + ",this.value)'>";
+    });
+    let html = "<div class='q-text'>" + inner + "</div>";
+    html += "<p class='fitb-hint'>Punteggio parziale: " + ptsList.join(" + ") + " pt</p>";
+    return html;
+  }
+
+  // Modalità griglia standard
+  const cols = q.cols || 1;
   let html = "<div class='multi-fitb-grid' style='grid-template-columns:repeat(" + cols + ",1fr);'>";
   q.boxes.forEach((box, i) => {
     html += "<div class='multi-fitb-box'>" +

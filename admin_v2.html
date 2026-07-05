@@ -155,6 +155,10 @@
   .prev-opt-label { font-weight:bold; flex-shrink:0; min-width:20px; }
   .prev-fitb { font-family:monospace; font-size:0.9em; padding:8px 12px;
                background:#f8f8f8; border:1px solid #ddd; margin-bottom:6px; }
+  .dp-table { border-collapse:collapse; margin:12px 0; font-family:monospace; }
+  .dp-table th, .dp-table td { border:1px solid #bbb; padding:6px 10px; text-align:center; min-width:2.5em; }
+  .dp-table th { background:#f5f5f0; font-weight:bold; }
+  .dp-table .dp-correct { background:#f0f7f0; color:#2e7d32; font-weight:bold; }
   .prev-meta { font-size:0.78em; color:#999; margin-top:16px; line-height:1.8; }
   .prev-btn { background:none; border:none; cursor:pointer; color:#888; font-size:0.82em;
               padding:2px 6px; flex-shrink:0; line-height:1; }
@@ -315,9 +319,7 @@
       <button class="btn btn-outline btn-ph" onclick="createNewSheet('results')">+ Nuovo</button>
       <span class="ph-sep">|</span>
       <span class="ph-label">Apps Script:</span>
-      <input type="text" id="cfg-script-url" placeholder="URL deployment Apps Script"
-        style="min-width:160px;max-width:280px;" onchange="saveSheetConfig()">
-      <a id="link-script" href="#" target="_blank" style="color:#888;text-decoration:none;flex-shrink:0;" title="Apri editor Apps Script">↗</a>
+      <a id="link-script" href="#" target="_blank" style="color:#888;text-decoration:none;flex-shrink:0;" title="Apri editor Apps Script">↗ Apri editor</a>
       <span id="cfg-msg" style="font-size:0.78em;white-space:nowrap;flex-shrink:0;"></span>
     </div>
     <!-- Campi nascosti per ID correnti -->
@@ -733,7 +735,7 @@ const TEST_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyI5a2ejnWKpKnH
 const _isTestMode     = new URLSearchParams(window.location.search).has("test");
 const ACTIVE_URL      = (_isTestMode && TEST_SCRIPT_URL) ? TEST_SCRIPT_URL : SCRIPT_URL;
 if (_isTestMode) document.getElementById("test-banner").style.display = "block";
-const BUILD = "15f4f46";
+const BUILD = "fdb7e6c";
 document.getElementById("build-label-login").textContent = "build " + BUILD;
 document.getElementById("build-label").textContent = "build " + BUILD;
 
@@ -868,7 +870,6 @@ async function loadSheetConfig() {
       document.getElementById("link-folder").href = res.folder_url;
     }
     if (res.script_editor_url) {
-      document.getElementById("cfg-script-url").value = res.script_editor_url;
       document.getElementById("link-script").href = res.script_editor_url;
     }
   } catch(e) { /* silenzioso — non blocca il login */ }
@@ -889,13 +890,11 @@ async function saveSheetConfig() {
   const qsId = extractSheetId(document.getElementById("cfg-qs-url").value.trim());
   const rsId = extractSheetId(document.getElementById("cfg-rs-url").value.trim());
   const fId        = extractFolderId(document.getElementById("cfg-folder-url").value.trim());
-  const scriptUrl  = document.getElementById("cfg-script-url").value.trim();
   msg.style.color = "#555"; msg.textContent = "Salvataggio…";
   try {
     const res = await callScript({
       action: "setConfig", password: adminPassword,
-      questions_id: qsId, results_id: rsId, folder_id: fId,
-      script_editor_url: scriptUrl
+      questions_id: qsId, results_id: rsId, folder_id: fId
     });
     if (res.status === "ok") {
       msg.style.color = "#2e7d32"; msg.textContent = "✓ Salvato";
@@ -905,7 +904,6 @@ async function saveSheetConfig() {
         "https://docs.google.com/spreadsheets/d/" + rsId + "/edit";
       if (fId) document.getElementById("link-folder").href =
         "https://drive.google.com/drive/folders/" + fId;
-      if (scriptUrl) document.getElementById("link-script").href = scriptUrl;
       // Ricarica esami e tracce dal nuovo foglio
       msg.textContent = "✓ Salvato — ricarico esami…";
       try {
@@ -1056,10 +1054,13 @@ function populateEsameSelect(esami) {
     const opt  = document.createElement("option");
     opt.value  = e.exam_id;
     const icon = e.stato === "open" ? "▶ " : "■ ";
-    const mode = e.modalita === "practice" ? " [esercitazione]" : " [esame]";
+    const isPractice = e.modalita === "practice";
+    const mode = isPractice ? " [esercitazione]" : " [esame]";
     const t    = allTracks.find(t => t.track_id === e.traccia_id);
-    const name = e.nome && e.nome.trim() ? e.nome : (t ? t.nome : e.traccia_id);
-    opt.textContent = icon + (e.corso ? e.corso + " — " : "") + name + (e.data ? " · " + formatDateIt(e.data) : "") + mode;
+    const trackName = t ? t.nome : e.traccia_id;
+    const name = e.nome && e.nome.trim() ? e.nome : trackName;
+    const suffix = isPractice ? "" : (e.data ? " · " + formatDateIt(e.data) : "");
+    opt.textContent = icon + (e.corso ? e.corso + " — " : "") + (isPractice ? trackName : name) + suffix + mode;
     sel.appendChild(opt);
   });
 }
@@ -1718,7 +1719,9 @@ function previewQuestion(id, event) {
     " · " + (({mc:"scelta multipla",fitb:"risposta libera",match:"corrispondenza",free:"testo libero","multi-fitb":"caselle multiple",cloze:"completamento"}[q.tipo] || q.tipo)) +
     " · " + q.punti + " pt";
 
-  let body = `<div class="prev-text">${q.testo}</div>`;
+  // multi-fitb tabella: {{N}} nel testo → mostra risposte corrette inline nella tabella
+  const isTableFitb = q.tipo === "multi-fitb" && /\{\{\d+\}\}/.test(q.testo || "");
+  let body = isTableFitb ? "" : `<div class="prev-text">${q.testo}</div>`;
 
   if (q.tipo === "mc") {
     const correct = String(q.corretta).toUpperCase().charCodeAt(0) - 65; // A=0, B=1, …
@@ -1730,6 +1733,30 @@ function previewQuestion(id, event) {
         ${i === correct ? '<span style="margin-left:auto;color:#2e7d32;font-size:0.85em;">✓ corretta</span>' : ""}
       </div>`;
     }).join("");
+  } else if (q.tipo === "multi-fitb" && isTableFitb) {
+    try {
+      const d = typeof q.data === "string" ? JSON.parse(q.data || "{}") : (q.data || {});
+      const boxes = d.boxes || [];
+      const filled = q.testo.replace(/\{\{(\d+)\}\}/g, (_, idx) => {
+        const i = parseInt(idx);
+        const c = escHtml(String((boxes[i] && boxes[i].correct) || "?"));
+        return `<span class="dp-correct">${c}</span>`;
+      });
+      body += `<div class="prev-text">${filled}</div>`;
+    } catch(e) { body += "<p style='color:#b00;'>Dati multi-fitb non leggibili</p>"; }
+  } else if (q.tipo === "multi-fitb") {
+    try {
+      const d = typeof q.data === "string" ? JSON.parse(q.data || "{}") : (q.data || {});
+      const boxes = d.boxes || [];
+      body += boxes.map((b, i) => {
+        const lbl = escHtml(String(b.label || (i + 1)));
+        const c   = escHtml(String(b.correct || ""));
+        return `<div class="prev-fitb" style="display:flex;gap:8px;align-items:center;">
+          <span style="color:#555;min-width:60px;">${lbl}:</span>
+          <span style="color:#2e7d32;font-weight:bold;">${c}</span>
+          <span style="color:#aaa;font-size:0.82em;">(${b.pts || 0} pt)</span></div>`;
+      }).join("");
+    } catch(e) { body += "<p style='color:#b00;'>Dati multi-fitb non leggibili</p>"; }
   } else if (q.tipo === "cloze") {
     try {
       const d = JSON.parse(q.data || "{}");

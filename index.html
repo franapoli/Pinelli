@@ -133,11 +133,14 @@ let allExams = [];
 let selectedExamId = null;
 
 function callScript(payload) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
   return fetch(ACTIVE_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify(payload)
-  }).then(r => r.text()).then(t => JSON.parse(t));
+    body: JSON.stringify(payload),
+    signal: controller.signal
+  }).then(r => r.text()).then(t => { clearTimeout(timer); return JSON.parse(t); });
 }
 
 function formatDate(iso) {
@@ -147,8 +150,9 @@ function formatDate(iso) {
 }
 
 function examLabel(e) {
-  const d = formatDate(e.data);
   const dur = e.durata ? " · " + e.durata + " min" : "";
+  if (e.modalita === "practice" && e.track_name) return e.track_name + dur;
+  const d = formatDate(e.data);
   return d ? d + dur : e.exam_id;
 }
 
